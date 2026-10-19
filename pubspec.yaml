@@ -31,6 +31,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # سنستخدم هذا لاحقاً لوضع صورة الفيل الملاك
   assets:
     - assets/images/
