@@ -1,4 +1,4 @@
-name: shadowdev_app
+name: shadowdev
 description: "ShadowDev - نظام النهوض"
 publish_to: 'none'
 version: 1.0.0+1
