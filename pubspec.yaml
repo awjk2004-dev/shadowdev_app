@@ -22,6 +22,13 @@ dependencies:
   # أيقونات وخطوط
   google_fonts: ^6.1.0
   cupertino_icons: ^1.0.6
+  # نسخة متوافقة مع Dart 3 من أيقونات Phosphor
+  phosphor_icons: ^3.0.1
+
+  # رسم الرادار (نسخة محلية معدّلة لتتوافق مع Dart 3)
+  flutter_radar_chart:
+    path: packages/flutter_radar_chart
+  graphview: ^1.5.1
 
 dev_dependencies:
   flutter_test:

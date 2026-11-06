@@ -1,8 +1,13 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:phosphor_icons/phosphor_icons.dart';
+
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../auth/screens/login_screen.dart';
+import '../ranks/ranks_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -14,79 +19,281 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   final _apiClient = ApiClient();
   final _storage = const FlutterSecureStorage();
+
   bool _isLoading = true;
   String _username = '';
   String _fullName = '';
+  String _rank = 'E';
+  double _targetWeight = 0.0;
+  Map<String, int> _stats = {
+    'body': 0,
+    'mind': 0,
+    'work': 0,
+    'self_development': 0,
+    'relations': 0,
+  };
+
+  final List<Map<String, dynamic>> _statItems = const [
+    {
+      'key': 'mind',
+      'label': 'العقل',
+      'icon': PhosphorIconsRegular.brain,
+    },
+    {
+      'key': 'body',
+      'label': 'الجسد',
+      'icon': PhosphorIconsRegular.barbell,
+    },
+    {
+      'key': 'work',
+      'label': 'العمل',
+      'icon': PhosphorIconsRegular.briefcase,
+    },
+    {
+      'key': 'self_development',
+      'label': 'النفس',
+      'icon': PhosphorIconsRegular.shield,
+    },
+    {
+      'key': 'relations',
+      'label': 'العلاقات',
+      'icon': PhosphorIconsRegular.heart,
+    },
+  ];
 
   @override
   void initState() {
     super.initState();
-    _fetchProfile();
+    _fetchProfileData();
   }
 
-  void _fetchProfile() async {
+  int _asInt(dynamic value) {
+    if (value == null) return 0;
+    return int.tryParse(value.toString()) ?? 0;
+  }
+
+  double _asDouble(dynamic value) {
+    if (value == null) return 0.0;
+    return double.tryParse(value.toString()) ?? 0.0;
+  }
+
+  Future<void> _fetchProfileData() async {
+    if (!mounted) return;
+    setState(() => _isLoading = true);
+
     try {
-      final response = await _apiClient.getPlayerData(); // نجلب البيانات الأساسية
-      // ملاحظة: في الباك اند الحقيقي، يجب أن تجلب بيانات المستخدم من /auth/me
-      // هنا سنستخدم بيانات وهمية أو نجلبها من التخزين المحلي مؤقتاً
+      final responses = await Future.wait([
+        _apiClient.getUserData(),
+        _apiClient.getWeeklyStats(),
+      ]);
+      if (!mounted) return;
+
+      final userData = responses[0].data is Map
+          ? Map<String, dynamic>.from(responses[0].data as Map)
+          : <String, dynamic>{};
+      final statsData = responses[1].data is Map
+          ? Map<String, dynamic>.from(responses[1].data as Map)
+          : <String, dynamic>{};
+
+      Map<String, dynamic> playerData = <String, dynamic>{};
+      try {
+        final playerResponse = await _apiClient.getPlayerData();
+        if (playerResponse.data is Map) {
+          playerData = Map<String, dynamic>.from(playerResponse.data as Map);
+        }
+      } catch (_) {
+        // تظل بيانات الملف الشخصي متاحة حتى لو تعذر جلب بيانات اللاعب
+      }
+
+      if (!mounted) return;
       setState(() {
-        _username = 'ahmed'; // سيتم جلبها ديناميكياً لاحقاً
-        _fullName = 'Ahmed Ali';
+        _username = userData['username']?.toString() ?? '';
+        _fullName = userData['full_name']?.toString() ?? '';
+        _rank = playerData['rank']?.toString() ?? 'E';
+        _targetWeight = _asDouble(playerData['target_weight']);
+        _stats = {
+          'body': _asInt(statsData['body']),
+          'mind': _asInt(statsData['mind']),
+          'work': _asInt(statsData['work']),
+          'self_development': _asInt(
+            statsData['self_development'] ?? statsData['self'],
+          ),
+          'relations': _asInt(statsData['relations']),
+        };
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
-    }
-  }
-
-  void _logout() async {
-    await _storage.delete(key: 'access_token');
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => LoginScreen()),
-        (route) => false,
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر جلب بيانات الملف الشخصي')),
       );
     }
   }
 
+  Future<void> _logout() async {
+    await _storage.delete(key: 'access_token');
+    if (!mounted) return;
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
+      (route) => false,
+    );
+  }
+
   void _editNameDialog() {
     final controller = TextEditingController(text: _fullName);
+    final messenger = ScaffoldMessenger.of(context);
+
     showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: AppColors.surface,
-          title: const Text('تعديل الاسم', style: TextStyle(color: Colors.white)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: AppColors.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          title: const Text(
+            'تعديل الاسم',
+            style: TextStyle(color: Colors.white),
+          ),
           content: TextField(
             controller: controller,
             style: const TextStyle(color: Colors.white),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: 'الاسم الكامل',
-              labelStyle: TextStyle(color: AppColors.textSub),
+              labelStyle: const TextStyle(color: AppColors.textSub),
+              filled: true,
+              fillColor: AppColors.background.withValues(alpha: 0.6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
             ),
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('إلغاء', style: TextStyle(color: AppColors.textSub)),
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text(
+                'إلغاء',
+                style: TextStyle(color: AppColors.textSub),
+              ),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
               onPressed: () async {
-                Navigator.pop(context);
+                final newName = controller.text.trim();
+                if (newName.isEmpty) return;
+                Navigator.pop(dialogContext);
                 try {
-                  await _apiClient.updateProfile(controller.text);
-                  setState(() => _fullName = controller.text);
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('تم تحديث الاسم بنجاح!')),
-                    );
-                  }
+                  await _apiClient.updateProfile(newName);
+                  if (!mounted) return;
+                  setState(() => _fullName = newName);
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('تم تحديث الاسم بنجاح!')),
+                  );
                 } catch (e) {
                   if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    messenger.showSnackBar(
                       const SnackBar(content: Text('فشل التحديث')),
+                    );
+                  }
+                }
+              },
+              child: const Text('حفظ'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _editTargetWeightDialog() {
+    final controller = TextEditingController(
+      text: _targetWeight > 0 ? _targetWeight.toStringAsFixed(1) : '',
+    );
+    final messenger = ScaffoldMessenger.of(context);
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(
+              color: AppColors.primary.withValues(alpha: 0.3),
+            ),
+          ),
+          title: const Text(
+            'تعديل الوزن المستهدف',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: TextField(
+            controller: controller,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              labelText: 'الوزن المستهدف بالكيلوجرام',
+              labelStyle: const TextStyle(color: AppColors.textSub),
+              suffixText: 'كجم',
+              suffixStyle: const TextStyle(color: AppColors.textSub),
+              filled: true,
+              fillColor: AppColors.background.withValues(alpha: 0.6),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text(
+                'إلغاء',
+                style: TextStyle(color: AppColors.textSub),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                final newTarget = double.tryParse(controller.text.trim());
+                if (newTarget == null || newTarget <= 0) {
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('يرجى إدخال وزن مستهدف صحيح'),
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+                try {
+                  await _apiClient.updateTargetWeight(newTarget);
+                  if (!mounted) return;
+                  setState(() => _targetWeight = newTarget);
+                  messenger.showSnackBar(
+                    const SnackBar(
+                      content: Text('تم تحديث الوزن المستهدف بنجاح!'),
+                      backgroundColor: AppColors.primary,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+                } catch (e) {
+                  if (mounted) {
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('فشل تحديث الوزن المستهدف'),
+                      ),
                     );
                   }
                 }
@@ -103,54 +310,373 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(title: const Text('الملف الشخصي')),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                children: [
-                  // الصورة الشخصية
-                  const CircleAvatar(
-                    radius: 50,
-                    backgroundColor: AppColors.primary,
-                    child: Icon(Icons.person, size: 50, color: Colors.white),
+      appBar: AppBar(
+        title: const Text('نافذة الحالة'),
+        backgroundColor: Colors.transparent,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: RadialGradient(
+            colors: [
+              AppColors.surface.withValues(alpha: 0.85),
+              AppColors.background,
+            ],
+            radius: 1.4,
+          ),
+        ),
+        child: SafeArea(
+          child: _isLoading
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                  child: Column(
+                    children: [
+                      _buildProfileHeader(),
+                      const SizedBox(height: 28),
+                      _buildStatsCard(),
+                      const SizedBox(height: 16),
+                      _buildTargetWeightButton(),
+                      const SizedBox(height: 20),
+                      _buildMenuButton(
+                        icon: PhosphorIconsRegular.medal,
+                        title: 'سُلّم الرتب',
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const RanksScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildMenuButton(
+                        icon: PhosphorIconsRegular.pencilSimple,
+                        title: 'تعديل الاسم',
+                        onTap: _editNameDialog,
+                      ),
+                      _buildMenuButton(
+                        icon: PhosphorIconsRegular.signOut,
+                        title: 'تسجيل الخروج',
+                        color: Colors.redAccent,
+                        onTap: _logout,
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 20),
-                  
-                  // الاسم
-                  Text(
-                    _fullName,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white),
-                  ),
-                  Text(
-                    '@$_username',
-                    style: const TextStyle(fontSize: 16, color: AppColors.textSub),
-                  ),
-                  const SizedBox(height: 40),
+                ),
+        ),
+      ),
+    );
+  }
 
-                  // زر تعديل الاسم
-                  ListTile(
-                    tileColor: AppColors.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    leading: const Icon(Icons.edit, color: AppColors.primary),
-                    title: const Text('تعديل الاسم الكامل', style: TextStyle(color: Colors.white)),
-                    trailing: const Icon(Icons.arrow_forward_ios, color: AppColors.textSub, size: 16),
-                    onTap: _editNameDialog,
-                  ),
-                  const SizedBox(height: 10),
+  Widget _buildProfileHeader() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.6),
+              width: 2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.45),
+                blurRadius: 30,
+                spreadRadius: 4,
+              ),
+            ],
+          ),
+          child: const CircleAvatar(
+            radius: 52,
+            backgroundColor: AppColors.surface,
+            child: Icon(
+              PhosphorIconsRegular.user,
+              size: 56,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        Text(
+          _fullName.isEmpty ? 'اللاعب' : _fullName,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textMain,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '@$_username',
+          style: const TextStyle(
+            fontSize: 15,
+            color: AppColors.textSub,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.7),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.35),
+                blurRadius: 18,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Text(
+            '$_rank-RANK',
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: AppColors.primary,
+              letterSpacing: 2,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 
-                  // زر تسجيل الخروج
-                  ListTile(
-                    tileColor: AppColors.surface,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text('تسجيل الخروج', style: TextStyle(color: Colors.red)),
-                    onTap: _logout,
-                  ),
-                ],
+  Widget _buildStatsCard() {
+    final maxStat = _statItems.fold<int>(0, (currentMax, item) {
+      final value = _stats[item['key']] ?? 0;
+      return value > currentMax ? value : currentMax;
+    });
+    final denominator = maxStat > 0 ? maxStat : 1;
+
+    return _GlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(
+                PhosphorIconsRegular.chartLine,
+                color: AppColors.accent,
+                size: 22,
+              ),
+              SizedBox(width: 10),
+              Text(
+                'إحصائيات الأسبوع',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textMain,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ..._statItems.map((item) {
+            final value = _stats[item['key']] ?? 0;
+            final progress = (value / denominator).clamp(0.0, 1.0).toDouble();
+            return _buildStatRow(item, value, progress);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(
+    Map<String, dynamic> item,
+    int value,
+    double progress,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: AppColors.primary.withValues(alpha: 0.3),
               ),
             ),
+            child: Icon(
+              item['icon'] as IconData,
+              color: AppColors.primary,
+              size: 18,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      item['label'] as String,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                    Text(
+                      value.toString(),
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.accent,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 7),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 7,
+                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    valueColor: const AlwaysStoppedAnimation(AppColors.primary),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTargetWeightButton() {
+    final label = _targetWeight > 0
+        ? 'تعديل الوزن المستهدف (${_targetWeight.toStringAsFixed(1)} كجم)'
+        : 'تحديد الوزن المستهدف';
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.18),
+            blurRadius: 18,
+            spreadRadius: 1,
+          ),
+        ],
+      ),
+      child: OutlinedButton.icon(
+        onPressed: _editTargetWeightDialog,
+        icon: const Icon(
+          PhosphorIconsRegular.target,
+          color: AppColors.accent,
+          size: 22,
+        ),
+        label: Text(
+          label,
+          style: const TextStyle(
+            color: AppColors.textMain,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.5),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMenuButton({
+    required IconData icon,
+    required String title,
+    required VoidCallback onTap,
+    Color color = AppColors.primary,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.1),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 4,
+          ),
+          leading: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          title: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color == Colors.redAccent ? color : AppColors.textMain,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          trailing: const Icon(
+            PhosphorIconsRegular.caretLeft,
+            color: AppColors.textSub,
+            size: 22,
+          ),
+          onTap: onTap,
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCard extends StatelessWidget {
+  const _GlassCard({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.2),
+            ),
+          ),
+          child: child,
+        ),
+      ),
     );
   }
 }

@@ -2,8 +2,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
-  // نستخدم localhost لأننا فعلنا adb reverse
-  static const String baseUrl = 'http://localhost:8000/api/v1';
+  // يُمرَّر وقت البناء عبر --dart-define=API_URL=...
+  static const String baseUrl = String.fromEnvironment(
+    'API_URL',
+    defaultValue: 'http://localhost:8000/api/v1',
+  );
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
 
@@ -34,7 +37,8 @@ class ApiClient {
     return await _dio.post('/auth/login', data: formData);
   }
 
-  Future<Response> register(String username, String fullName, String password) async {
+  Future<Response> register(
+      String username, String fullName, String password) async {
     return await _dio.post('/auth/register', data: {
       'username': username,
       'full_name': fullName,
@@ -46,6 +50,10 @@ class ApiClient {
     return await _dio.put('/auth/me', data: {'full_name': fullName});
   }
 
+  Future<Response> getUserData() async {
+    return await _dio.get('/auth/me');
+  }
+
   // 2. اللاعب (Player)
   Future<Response> getPlayerData() async {
     return await _dio.get('/player/me');
@@ -55,13 +63,25 @@ class ApiClient {
     return await _dio.get('/player/bmi');
   }
 
+  Future<Response> getStreakData() async {
+    return await _dio.get('/player/streak');
+  }
+
   Future<Response> updateHeight(double height) async {
     return await _dio.put('/player/height', data: {'height': height});
   }
-     // دالة جلب بيانات الوزن
+
+  Future<Response> updateTargetWeight(double targetWeight) async {
+    return await _dio.put('/player/target', data: {
+      'target_weight': targetWeight,
+    });
+  }
+
+  // دالة جلب بيانات الوزن
   Future<Response> getWeightData() async {
     return await _dio.get('/player/me');
   }
+
   // 3. المهام (Tasks)
   Future<Response> getTasks() async {
     return await _dio.get('/tasks');
@@ -69,6 +89,15 @@ class ApiClient {
 
   Future<Response> completeTask(int taskId) async {
     return await _dio.post('/tasks/$taskId/complete');
+  }
+
+  // 4. الإحصائيات (Stats)
+  Future<Response> getStats() async {
+    return await _dio.get('/stats');
+  }
+
+  Future<Response> getWeeklyStats() async {
+    return await _dio.get('/stats/weekly');
   }
 
   // 4. المهارات (Skills)
@@ -83,5 +112,25 @@ class ApiClient {
   // 5. الوزن (Weight)
   Future<Response> recordWeight(double weight) async {
     return await _dio.post('/weight', data: {'weight': weight});
+  }
+
+  // إضافة مهمة
+  Future<Response> createTask(
+      String title, String dimension, String repeatType) async {
+    return await _dio.post('/tasks', data: {
+      'title': title,
+      'dimension': dimension,
+      'repeat_type': repeatType,
+    });
+  }
+
+  // حذف مهمة
+  Future<Response> deleteTask(int taskId) async {
+    return await _dio.delete('/tasks/$taskId');
+  }
+
+  // تعديل مهمة
+  Future<Response> updateTask(int taskId, String newTitle) async {
+    return await _dio.put('/tasks/$taskId', data: {'title': newTitle});
   }
 }

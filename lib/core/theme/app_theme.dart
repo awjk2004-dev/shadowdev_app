@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const Color background = Color(0xFF110000); // أسود مائل للحمرة
-  static const Color surface = Color(0xFF1A0505);    // خلفية البطاقات
-  static const Color primary = Color(0xFFE50914);    // الأحمر الناري
-  static const Color accent = Color(0xFFFFD700);     // الذهبي للـ XP
+  static const Color background = Color(0xFF0B0C10); // أسود عميق
+  static const Color surface = Color(0xFF1A0B2E); // بنفسجي داكن للبطاقات
+  static const Color primary = Color(0xFFC026D3); // بنفسجي نيون
+  static const Color accent = Color(0xFF00FFFF); // سماوي نيون
   static const Color textMain = Colors.white;
   static const Color textSub = Color(0xFFB3B3B3);
 }
@@ -15,7 +15,7 @@ class AppTheme {
     return ThemeData(
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.background,
-      
+
       // استخدام خط Cairo
       textTheme: GoogleFonts.cairoTextTheme(ThemeData.dark().textTheme).apply(
         bodyColor: AppColors.textMain,
@@ -29,13 +29,15 @@ class AppTheme {
       ),
 
       // تخصيص البطاقات (تم إصلاح الخطوط الحمراء هنا)
-      cardTheme: CardThemeData( // 👈 تغيرت إلى CardThemeData
+      cardTheme: CardThemeData(
+        // 👈 تغيرت إلى CardThemeData
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: AppColors.primary.withValues(alpha: 0.3), // 👈 تغيرت to withValues
+            color: AppColors.primary
+                .withValues(alpha: 0.3), // 👈 تغيرت to withValues
             width: 1,
           ),
         ),
