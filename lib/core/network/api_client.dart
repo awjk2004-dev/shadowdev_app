@@ -23,7 +23,7 @@ class ApiClient {
       InterceptorsWrapper(
         onRequest: (options, handler) async {
           final token = await _storage.read(key: 'access_token');
-          if (token != null) {
+          if (token != null && token.isNotEmpty) {
             options.headers['Authorization'] = 'Bearer $token';
           }
           return handler.next(options);
@@ -34,11 +34,14 @@ class ApiClient {
 
   // 1. المصادقة (Auth)
   Future<Response> login(String username, String password) async {
-    final formData = FormData.fromMap({
-      'username': username,
-      'password': password,
-    });
-    return await _dio.post('/auth/login', data: formData);
+    return await _dio.post(
+      '/auth/login',
+      data: {
+        'username': username,
+        'password': password,
+      },
+      options: Options(contentType: Headers.formUrlEncodedContentType),
+    );
   }
 
   Future<Response> register(
@@ -120,11 +123,16 @@ class ApiClient {
 
   // إضافة مهمة
   Future<Response> createTask(
-      String title, String dimension, String repeatType) async {
+    String title,
+    String dimension,
+    String repeatType, {
+    required String difficulty,
+  }) async {
     return await _dio.post('/tasks', data: {
       'title': title,
       'dimension': dimension,
       'repeat_type': repeatType,
+      'difficulty': difficulty,
     });
   }
 
@@ -134,7 +142,16 @@ class ApiClient {
   }
 
   // تعديل مهمة
-  Future<Response> updateTask(int taskId, String newTitle) async {
-    return await _dio.put('/tasks/$taskId', data: {'title': newTitle});
+  Future<Response> updateTask(
+    int taskId, {
+    required String title,
+    required String dimension,
+    required String difficulty,
+  }) async {
+    return await _dio.put('/tasks/$taskId', data: {
+      'title': title,
+      'dimension': dimension,
+      'difficulty': difficulty,
+    });
   }
 }

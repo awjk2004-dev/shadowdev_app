@@ -1,13 +1,66 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:home_widget/home_widget.dart';
 import 'package:provider/provider.dart';
+import 'core/network/api_client.dart';
+import 'core/notifications/local_notification_service.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/streak_home_widget_service.dart';
 import 'features/auth/screens/splash_screen.dart';
 import 'features/home/providers/player_provider.dart';
 import 'features/home/screens/home_screen.dart';
 import 'features/skills/providers/skill_tree_provider.dart';
 
-void main() {
+@pragma('vm:entry-point')
+Future<void> _handleWidgetInteraction(Uri? uri) async {
+  if (uri?.host != 'refresh') return;
+
+  try {
+    final response = await ApiClient().getStreakData();
+    final streakData = response.data;
+    if (streakData is! Map) {
+      throw const FormatException('Unexpected streak response');
+    }
+
+    final rawStreak = streakData['current_streak'] ?? streakData['streak'];
+    final streak = rawStreak is num
+        ? rawStreak.toInt()
+        : int.tryParse(rawStreak?.toString() ?? '');
+    if (streak == null) {
+      throw const FormatException('Streak value is missing');
+    }
+
+    await StreakHomeWidgetService.updateStreak(
+      streak,
+      systemMessage: 'تم التحديث',
+    );
+  } catch (error, stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'streak widget refresh',
+      ),
+    );
+    await HomeWidget.saveWidgetData<String>(
+      'system_message',
+      'تعذر التحديث',
+    );
+    await HomeWidget.updateWidget(
+      name: 'StreakWidgetProvider',
+      androidName: 'StreakWidgetProvider',
+    );
+  }
+}
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    await HomeWidget.registerInteractivityCallback(_handleWidgetInteraction);
+    await LocalNotificationService.instance.initialize();
+    await LocalNotificationService.instance.restoreDailyReminder();
+  }
   runApp(const ShadowDevApp());
 }
 

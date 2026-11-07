@@ -4,7 +4,9 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/design_system/system_widgets.dart';
 import '../../../core/network/api_client.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
 import '../../../features/home/screens/home_screen.dart';
+import '../../../features/home/providers/player_provider.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -40,6 +42,10 @@ class _LoginScreenState extends State<LoginScreen> {
         // حفظ التوكن
         await _storage.write(
             key: 'access_token', value: response.data['access_token']);
+
+        if (mounted) {
+          context.read<PlayerProvider>().fetchPlayerData();
+        }
 
         // الانتقال للشاشة الرئيسية (سنقوم بإنشائها)
         if (mounted) {

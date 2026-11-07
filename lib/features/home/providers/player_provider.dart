@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_client.dart';
+import '../../../core/widgets/streak_home_widget_service.dart';
 
 class PlayerProvider extends ChangeNotifier {
   PlayerProvider({ApiClient? apiClient})
@@ -27,6 +28,20 @@ class PlayerProvider extends ChangeNotifier {
     return int.tryParse(value.toString()) ?? 0;
   }
 
+  Future<void> _updateStreakWidget(int streakDays) async {
+    try {
+      await StreakHomeWidgetService.updateStreak(streakDays);
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'streak home widget',
+        ),
+      );
+    }
+  }
+
   Future<void> fetchPlayerData() async {
     isLoading = true;
     errorMessage = null;
@@ -47,6 +62,7 @@ class PlayerProvider extends ChangeNotifier {
 
       final streak = streakData['current_streak'] ?? streakData['streak'];
       currentStreak = streak is int ? streak : currentStreak;
+      await _updateStreakWidget(currentStreak);
 
       try {
         final statsResponse = await _apiClient.getStats();

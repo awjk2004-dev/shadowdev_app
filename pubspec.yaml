@@ -18,6 +18,8 @@ dependencies:
   
   # تخزين آمن للتوكن
   flutter_secure_storage: ^9.0.0
+  home_widget: ^0.9.4
+  flutter_local_notifications: ^19.4.2
   
   # أيقونات وخطوط
   google_fonts: ^6.1.0
@@ -29,14 +31,22 @@ dependencies:
   flutter_radar_chart:
     path: packages/flutter_radar_chart
   graphview: ^1.5.1
+  flutter_timezone: ^5.1.1
+  timezone: ^0.10.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.14.4
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/images/logo.png

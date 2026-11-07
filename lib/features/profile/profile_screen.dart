@@ -6,6 +6,7 @@ import '../../../core/design_system/chamfered_border.dart';
 import '../../../core/design_system/system_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/notifications/local_notification_service.dart';
 import '../auth/screens/login_screen.dart';
 import '../ranks/ranks_screen.dart';
 
@@ -139,6 +140,128 @@ class _ProfileScreenState extends State<ProfileScreen> {
       MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
+  }
+
+  Future<void> _showReminderSettings() async {
+    final service = LocalNotificationService.instance;
+    final currentReminder = await service.getReminderTime();
+    if (!mounted) return;
+
+    var enabled = currentReminder.enabled;
+    var reminderTime = TimeOfDay(
+      hour: currentReminder.hour,
+      minute: currentReminder.minute,
+    );
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          backgroundColor: AppColors.surface,
+          shape: const ChamferedBorder(
+            cut: 14,
+            side: BorderSide(color: AppColors.primary),
+          ),
+          title: const Text(
+            'التذكير اليومي',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'تفعيل إشعار يومي',
+                  style: TextStyle(color: AppColors.textMain),
+                ),
+                value: enabled,
+                activeThumbColor: AppColors.primary,
+                onChanged: (value) => setDialogState(() => enabled = value),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text(
+                  'وقت التذكير',
+                  style: TextStyle(color: AppColors.textMain),
+                ),
+                trailing: Text(
+                  reminderTime.format(dialogContext),
+                  style: const TextStyle(color: AppColors.primary),
+                ),
+                enabled: enabled,
+                onTap: !enabled
+                    ? null
+                    : () async {
+                        final selectedTime = await showTimePicker(
+                          context: dialogContext,
+                          initialTime: reminderTime,
+                        );
+                        if (!dialogContext.mounted) return;
+                        if (selectedTime != null) {
+                          setDialogState(() => reminderTime = selectedTime);
+                        }
+                      },
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text(
+                'إلغاء',
+                style: TextStyle(color: AppColors.textSub),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('حفظ'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (shouldSave != true || !mounted) return;
+
+    try {
+      if (enabled) {
+        final scheduled = await service.enableDailyReminder(
+          hour: reminderTime.hour,
+          minute: reminderTime.minute,
+        );
+        if (!mounted) return;
+        if (!scheduled) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                  'لم يتم منح صلاحية الإشعارات. فعّلها من إعدادات الجهاز.'),
+            ),
+          );
+          return;
+        }
+      } else {
+        await service.disableDailyReminder();
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            enabled ? 'تم تفعيل التذكير اليومي' : 'تم إيقاف التذكير اليومي',
+          ),
+          backgroundColor: AppColors.primary,
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذر حفظ إعداد التذكير')),
+      );
+    }
   }
 
   void _editNameDialog() {
@@ -343,6 +466,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       icon: PhosphorIconsRegular.pencilSimple,
                       title: 'تعديل الاسم',
                       onTap: _editNameDialog,
+                    ),
+                    _buildMenuButton(
+                      icon: PhosphorIconsRegular.bell,
+                      title: 'إعداد التذكير اليومي',
+                      onTap: _showReminderSettings,
                     ),
                     _buildMenuButton(
                       icon: PhosphorIconsRegular.signOut,
