@@ -1,17 +1,19 @@
 import 'dart:math' as math;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_radar_chart/flutter_radar_chart.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/design_system/chamfered_border.dart';
+import '../../../core/design_system/system_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../providers/player_provider.dart';
 import '../../tasks/tasks_screen.dart';
 import '../../skills/skills_screen.dart';
 import '../../body/body_screen.dart';
 import '../../profile/profile_screen.dart';
+import '../../ranks/ranks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -25,119 +27,88 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => PlayerProvider()..fetchPlayerData(),
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        appBar: _currentIndex == 0
-            ? AppBar(
-                title: const Text(
-                  'مرحباً بك',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textMain,
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: _currentIndex == 0
+          ? AppBar(
+              title: const Text('SHADOWDEV // STATUS'),
+              actions: [
+                IconButton(
+                  onPressed: _openProfile,
+                  icon: const Icon(
+                    PhosphorIconsRegular.userCircle,
+                    color: AppColors.primary,
+                    size: 34,
                   ),
+                  tooltip: 'الملف الشخصي',
                 ),
-                actions: [
-                  IconButton(
-                    onPressed: _openProfile,
-                    icon: const Icon(
-                      PhosphorIconsRegular.userCircle,
-                      color: AppColors.primary,
-                      size: 34,
-                    ),
-                    tooltip: 'الملف الشخصي',
-                  ),
+              ],
+            )
+          : null,
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: SafeArea(
+              child: IndexedStack(
+                index: _currentIndex,
+                children: [
+                  _buildHomeTab(),
+                  const TasksScreen(),
+                  const SkillsScreen(),
+                  const RanksScreen(),
+                  const BodyScreen(),
                 ],
-              )
-            : null,
-        body: Stack(
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.surface.withValues(alpha: 0.85),
-                      AppColors.background,
-                    ],
-                    radius: 1.5,
-                  ),
-                ),
-                child: SafeArea(
-                  child: IndexedStack(
-                    index: _currentIndex,
-                    children: [
-                      _buildHomeTab(),
-                      const TasksScreen(),
-                      const SkillsScreen(),
-                      const BodyScreen(),
-                    ],
-                  ),
-                ),
               ),
             ),
-            Positioned(
-              left: 20,
-              right: 20,
-              bottom: 20,
-              child: _buildFloatingNavBar(),
-            ),
-          ],
-        ),
+          ),
+          Positioned(
+            left: 12,
+            right: 12,
+            bottom: 8,
+            child: _buildFloatingNavBar(),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildFloatingNavBar() {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(30),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.8),
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: AppColors.primary, width: 1),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.35),
-                blurRadius: 24,
-                spreadRadius: 1,
-              ),
-            ],
+    return SystemPanel(
+      padding: const EdgeInsets.all(5),
+      active: true,
+      child: Row(
+        children: [
+          _buildNavItem(
+            0,
+            PhosphorIconsRegular.house,
+            PhosphorIconsFill.house,
+            'الحالة',
           ),
-          child: Row(
-            children: [
-              _buildNavItem(
-                0,
-                PhosphorIconsRegular.house,
-                PhosphorIconsFill.house,
-                'الرئيسية',
-              ),
-              _buildNavItem(
-                1,
-                PhosphorIconsRegular.listChecks,
-                PhosphorIconsFill.listChecks,
-                'المهام',
-              ),
-              _buildNavItem(
-                2,
-                PhosphorIconsRegular.star,
-                PhosphorIconsFill.star,
-                'المهارات',
-              ),
-              _buildNavItem(
-                3,
-                PhosphorIconsRegular.barbell,
-                PhosphorIconsFill.barbell,
-                'الجسد',
-              ),
-            ],
+          _buildNavItem(
+            1,
+            PhosphorIconsRegular.listChecks,
+            PhosphorIconsFill.listChecks,
+            'المهام',
           ),
-        ),
+          _buildNavItem(
+            2,
+            PhosphorIconsRegular.star,
+            PhosphorIconsFill.star,
+            'المهارات',
+          ),
+          _buildNavItem(
+            3,
+            PhosphorIconsRegular.medal,
+            PhosphorIconsFill.medal,
+            'الرتب',
+          ),
+          _buildNavItem(
+            4,
+            PhosphorIconsRegular.barbell,
+            PhosphorIconsFill.barbell,
+            'الجسد',
+          ),
+        ],
       ),
     );
   }
@@ -158,19 +129,21 @@ class _HomeScreenState extends State<HomeScreen> {
           setState(() => _currentIndex = index);
         },
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: const Duration(milliseconds: 120),
           curve: Curves.easeOut,
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: ShapeDecoration(
             color: selected
-                ? AppColors.primary.withValues(alpha: 0.22)
+                ? AppColors.primary.withValues(alpha: 0.12)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
-            border: selected
-                ? Border.all(
-                    color: AppColors.primary.withValues(alpha: 0.7),
-                  )
-                : null,
+            shape: ChamferedBorder(
+              cut: 7,
+              side: BorderSide(
+                color: selected
+                    ? AppColors.primary.withValues(alpha: 0.6)
+                    : Colors.transparent,
+              ),
+            ),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -270,12 +243,105 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          _buildPlayerCard(player),
+          const SizedBox(height: 12),
           _buildStreakCard(player),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildStatusRadarCard(player),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildTasksCard(),
           const SizedBox(height: 24),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlayerCard(PlayerProvider player) {
+    final progress = (player.xp % 100) / 100;
+    return SystemPanel(
+      active: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SystemTag('PLAYER PROFILE', compact: true),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Container(
+                width: 54,
+                height: 54,
+                decoration: ShapeDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.08),
+                  shape: const ChamferedBorder(
+                    cut: 12,
+                    side: BorderSide(color: AppColors.primary),
+                  ),
+                ),
+                child: const Icon(
+                  Icons.person_outline,
+                  color: AppColors.primary,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PLAYER // LVL ${player.level}',
+                      style: const TextStyle(
+                        color: AppColors.textMain,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.7,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${player.xp} XP TOTAL',
+                      style: const TextStyle(
+                        color: AppColors.textSub,
+                        fontSize: 11,
+                        letterSpacing: 1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SystemTag('${player.rank}-RANK'),
+            ],
+          ),
+          const SizedBox(height: 17),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'NEXT LEVEL',
+                style: TextStyle(
+                  color: AppColors.textSub,
+                  fontSize: 10,
+                  letterSpacing: 1.2,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                '${player.xp % 100} / 100 XP',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 5,
+            backgroundColor: AppColors.surfaceRaised,
+            borderRadius: BorderRadius.zero,
+          ),
         ],
       ),
     );
@@ -284,27 +350,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildStreakCard(PlayerProvider player) {
     final hasStreak = player.currentStreak > 0;
 
-    return _GlassCard(
+    return SystemPanel(
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: const Icon(
-              PhosphorIconsRegular.fire,
-              color: AppColors.primary,
-              size: 32,
-            ),
+          const Icon(
+            PhosphorIconsRegular.fire,
+            color: AppColors.primary,
+            size: 30,
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -361,7 +413,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     final progress = (player.xp % 100) / 100;
 
-    return _GlassCard(
+    return SystemPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -396,11 +448,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 child: Text(
-                  '${player.rank}-RANK',
+                  '[${player.rank}-RANK]',
                   style: const TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: AppColors.accent,
                     letterSpacing: 1,
                   ),
                 ),
@@ -473,7 +525,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTasksCard() {
-    return _GlassCard(
+    return SystemPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -487,7 +539,7 @@ class _HomeScreenState extends State<HomeScreen> {
               SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'لديك 3 مهام متبقية اليوم',
+                  'مهامك اليومية بانتظارك',
                   style: TextStyle(
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
@@ -498,36 +550,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 20),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.55),
-                  blurRadius: 26,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: ElevatedButton(
-              onPressed: _openTasksTab,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: const Text(
-                'ابدأ الآن',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
+          SystemButton(
+            label: 'ابدأ الآن',
+            icon: Icons.arrow_forward,
+            onPressed: _openTasksTab,
           ),
         ],
       ),
@@ -542,33 +568,6 @@ class _HomeScreenState extends State<HomeScreen> {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
-    );
-  }
-}
-
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
-
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.18),
-            ),
-          ),
-          child: child,
-        ),
-      ),
     );
   }
 }

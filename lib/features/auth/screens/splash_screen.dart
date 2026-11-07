@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/design_system/system_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import 'login_screen.dart';
 
@@ -8,132 +10,87 @@ class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'assets/images/1788367175.png',
-              fit: BoxFit.cover,
-              alignment: Alignment.center,
-              errorBuilder: (context, error, stackTrace) =>
-                  Container(color: AppColors.background),
-            ),
-          ),
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    AppColors.background.withValues(alpha: 0.58),
-                    AppColors.background.withValues(alpha: 0.34),
-                    AppColors.background.withValues(alpha: 0.88),
-                  ],
-                  stops: const [0, 0.48, 1],
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: LayoutBuilder(
-              builder: (context, constraints) => SingleChildScrollView(
-                padding: const EdgeInsets.all(24),
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'SHADOWDEV // نظام النهوض',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.accent,
-                          fontSize: 15,
-                          letterSpacing: 2.5,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Column(
-                        children: [
-                          const Text(
-                            'لقد تم اختيارك كلاعب',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 34,
-                              fontWeight: FontWeight.bold,
-                              shadows: [
-                                Shadow(
-                                  color: AppColors.background,
-                                  blurRadius: 18,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'نظام النهوض — الظل يرتقي',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 18,
-                              shadows: const [
-                                Shadow(
-                                  color: AppColors.background,
-                                  blurRadius: 12,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      SizedBox(
-                        width: 280,
-                        height: 58,
-                        child: ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 12,
-                            shadowColor:
-                                AppColors.primary.withValues(alpha: 0.6),
-                          ),
-                          onPressed: () {
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const LoginScreen(),
-                              ),
-                            );
-                          },
-                          child: const Text(
-                            'ابدأ النهوض',
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                      ),
-                      const Text(
-                        'نظام شخصي يعمل دون اتصال',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: AppColors.textSub,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            children: [
+              const SizedBox(height: 32),
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.terminal, color: AppColors.primary, size: 20),
+                  SizedBox(width: 8),
+                  Text(
+                    'SHADOWDEV // SYSTEM ONLINE',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.8,
+                    ),
                   ),
+                ],
+              ),
+              const Spacer(),
+              const SystemPanel(
+                active: true,
+                padding: EdgeInsets.all(24),
+                child: Column(
+                  children: [
+                    SystemTag('SYSTEM ALERT'),
+                    SizedBox(height: 28),
+                    Icon(
+                      Icons.radar,
+                      color: AppColors.primary,
+                      size: 64,
+                    ),
+                    SizedBox(height: 18),
+                    Text(
+                      'لقد تم اختيارك كلاعب',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textMain,
+                        fontSize: 30,
+                        height: 1.25,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'نظام النهوض جاهز. ابدأ مهمتك الأولى.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textSub,
+                        fontSize: 15,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
+              const Spacer(),
+              SystemButton(
+                label: 'ابدأ النهوض',
+                icon: Icons.arrow_forward,
+                onPressed: () {
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const LoginScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'نظام شخصي — تقدمك يبدأ بخطوة',
+                style: TextStyle(color: AppColors.textSub, fontSize: 12),
+              ),
+              const SizedBox(height: 12),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

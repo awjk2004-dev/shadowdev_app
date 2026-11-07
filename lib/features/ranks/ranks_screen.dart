@@ -1,9 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_theme.dart';
-import '../../../core/network/api_client.dart';
+import '../../core/design_system/chamfered_border.dart';
+import '../../core/design_system/system_widgets.dart';
+import '../../core/network/api_client.dart';
+import '../../core/theme/app_theme.dart';
 
 class RanksScreen extends StatefulWidget {
   const RanksScreen({super.key});
@@ -15,39 +15,16 @@ class RanksScreen extends StatefulWidget {
 class _RanksScreenState extends State<RanksScreen> {
   final _apiClient = ApiClient();
   bool _isLoading = true;
+  String? _errorMessage;
   String _currentRank = 'E';
 
-  final List<Map<String, dynamic>> _ranks = const [
-    {
-      'rank': 'E',
-      'title': 'البداية من الصفر',
-      'req': 'المستوى 1+',
-    },
-    {
-      'rank': 'D',
-      'title': 'الوصول إلى المستوى 5',
-      'req': 'المستوى 5+',
-    },
-    {
-      'rank': 'C',
-      'title': 'تبني أنظمة كاملة',
-      'req': 'المستوى 10+',
-    },
-    {
-      'rank': 'B',
-      'title': 'تبني APIs',
-      'req': 'المستوى 20+',
-    },
-    {
-      'rank': 'A',
-      'title': 'شغل حقيقي بعروض',
-      'req': 'المستوى 35+',
-    },
-    {
-      'rank': 'S',
-      'title': 'محترف متوازن الحياة',
-      'req': 'المستوى 50+',
-    },
+  static const List<_Rank> _ranks = [
+    _Rank('E', 'البداية من الصفر', 'المستوى 1+'),
+    _Rank('D', 'بناء عادة ثابتة', 'المستوى 5+'),
+    _Rank('C', 'إتقان الأنظمة اليومية', 'المستوى 10+'),
+    _Rank('B', 'أداء متقدم ومستمر', 'المستوى 20+'),
+    _Rank('A', 'توازن وإنجاز عاليان', 'المستوى 35+'),
+    _Rank('S', 'إتقان النظام بالكامل', 'المستوى 50+'),
   ];
 
   @override
@@ -57,208 +34,228 @@ class _RanksScreenState extends State<RanksScreen> {
   }
 
   Future<void> _fetchPlayerRank() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
     try {
       final response = await _apiClient.getPlayerData();
       if (!mounted) return;
-      if (response.statusCode == 200) {
-        setState(() {
-          _currentRank = response.data['rank']?.toString() ?? 'E';
-          _isLoading = false;
-        });
+      final data = response.data;
+      if (data is! Map || data['rank'] == null) {
+        throw const FormatException(
+            'Rank data was not returned by the server.');
       }
-    } catch (e) {
+      final rank = data['rank'].toString().toUpperCase();
+      if (!_ranks.any((item) => item.code == rank)) {
+        throw FormatException('Unknown player rank: $rank');
+      }
+      setState(() {
+        _currentRank = rank;
+        _isLoading = false;
+      });
+    } catch (error) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
+      setState(() {
+        _errorMessage =
+            'تعذر تحميل بيانات الرتبة. تحقق من الاتصال ثم أعد المحاولة.';
+        _isLoading = false;
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = _ranks.indexWhere((rank) => rank.code == _currentRank);
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('سُلّم الرتب'),
-        backgroundColor: Colors.transparent,
-      ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            colors: [
-              AppColors.surface.withValues(alpha: 0.85),
-              AppColors.background,
-            ],
-            radius: 1.4,
-          ),
-        ),
-        child: SafeArea(
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-                  itemCount: _ranks.length,
-                  itemBuilder: (context, index) {
-                    final rankData = _ranks[index];
-                    final rankOrder = ['E', 'D', 'C', 'B', 'A', 'S'];
-                    final currentIndex = rankOrder.indexOf(_currentRank);
-                    final thisIndex =
-                        rankOrder.indexOf(rankData['rank'] as String);
-                    final isCurrent = rankData['rank'] == _currentRank;
-                    final isUnlocked = thisIndex <= currentIndex;
-
-                    return Opacity(
-                      opacity: isUnlocked ? 1.0 : 0.5,
-                      child: _buildRankCard(
-                        rankData: rankData,
-                        isCurrent: isCurrent,
-                        isUnlocked: isUnlocked,
+      appBar: AppBar(title: const Text('RANK LADDER // سُلّم الرتب')),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _errorMessage != null
+                ? _buildError()
+                : ListView(
+                    padding: const EdgeInsets.fromLTRB(18, 12, 18, 120),
+                    children: [
+                      SystemPanel(
+                        active: true,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SystemTag('RANK PROGRESSION'),
+                            const SizedBox(height: 12),
+                            Text(
+                              'رتبتك الحالية: $_currentRank',
+                              style: const TextStyle(
+                                color: AppColors.textMain,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 20,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              '${currentIndex + 1} / ${_ranks.length} مراتب مكتسبة',
+                              style: const TextStyle(
+                                color: AppColors.textSub,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    );
-                  },
-                ),
-        ),
+                      const SizedBox(height: 18),
+                      for (var index = 0; index < _ranks.length; index++)
+                        _buildRankStep(
+                          _ranks[index],
+                          isCurrent: index == currentIndex,
+                          isUnlocked: index <= currentIndex,
+                          isLast: index == _ranks.length - 1,
+                        ),
+                    ],
+                  ),
       ),
     );
   }
 
-  Widget _buildRankCard({
-    required Map<String, dynamic> rankData,
+  Widget _buildRankStep(
+    _Rank rank, {
     required bool isCurrent,
     required bool isUnlocked,
+    required bool isLast,
   }) {
-    final Color accentColor = isCurrent
-        ? AppColors.accent
-        : isUnlocked
-            ? AppColors.primary
-            : AppColors.textSub;
-
-    final IconData statusIcon = isCurrent
-        ? Icons.star
-        : isUnlocked
-            ? Icons.check_circle
-            : Icons.lock;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: isCurrent
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.45),
-                  blurRadius: 26,
-                  spreadRadius: 2,
-                ),
-              ]
-            : const [],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isCurrent
-                  ? AppColors.surface.withValues(alpha: 0.8)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isCurrent
-                    ? AppColors.primary
-                    : Colors.white.withValues(alpha: 0.1),
-                width: isCurrent ? 2 : 1,
-              ),
-            ),
-            child: Row(
+    final color = isUnlocked ? AppColors.primary : AppColors.inactive;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 28,
+            child: Column(
               children: [
                 Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: accentColor.withValues(alpha: 0.12),
-                    border: Border.all(
-                      color: accentColor.withValues(alpha: 0.4),
+                  width: 22,
+                  height: 22,
+                  decoration: ShapeDecoration(
+                    color: isUnlocked
+                        ? AppColors.primary.withValues(alpha: 0.15)
+                        : AppColors.background,
+                    shape: ChamferedBorder(
+                      cut: 6,
+                      dashed: !isUnlocked,
+                      side: BorderSide(color: color, width: 1.2),
                     ),
                   ),
                   child: Icon(
-                    statusIcon,
-                    color: accentColor,
-                    size: 24,
+                    isCurrent
+                        ? Icons.radio_button_checked
+                        : isUnlocked
+                            ? Icons.check
+                            : Icons.lock_outline,
+                    color: color,
+                    size: 13,
                   ),
                 ),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'رتبة ${rankData['rank']}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: isCurrent
-                              ? AppColors.textMain
-                              : isUnlocked
-                                  ? AppColors.textMain
-                                  : AppColors.textSub,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        rankData['title'] as String,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isCurrent
-                              ? AppColors.textMain
-                              : AppColors.textSub,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'المتطلبات: ${rankData['req']}',
-                        style: const TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSub,
-                        ),
-                      ),
-                    ],
+                if (!isLast)
+                  Container(
+                    width: 1,
+                    height: 72,
+                    margin: const EdgeInsets.symmetric(vertical: 3),
+                    color: isUnlocked
+                        ? AppColors.primary.withValues(alpha: 0.55)
+                        : AppColors.inactive.withValues(alpha: 0.35),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isCurrent
-                        ? AppColors.primary.withValues(alpha: 0.18)
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: isCurrent
-                          ? AppColors.primary
-                          : accentColor.withValues(alpha: 0.5),
-                      width: 2,
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      rankData['rank'] as String,
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: isCurrent ? AppColors.primary : accentColor,
-                      ),
-                    ),
-                  ),
-                ),
               ],
             ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: SystemPanel(
+              active: isCurrent,
+              dashed: !isUnlocked,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 15),
+              child: Row(
+                children: [
+                  Text(
+                    rank.code,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 25,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          rank.title,
+                          style: TextStyle(
+                            color: isUnlocked
+                                ? AppColors.textMain
+                                : AppColors.inactive,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          'المتطلبات: ${rank.requirement}',
+                          style: TextStyle(
+                            color: isUnlocked
+                                ? AppColors.textSub
+                                : AppColors.inactive,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (isCurrent) const SystemTag('ACTIVE', compact: true),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildError() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: SystemPanel(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SystemTag('CONNECTION ERROR', active: false),
+              const SizedBox(height: 14),
+              Text(
+                _errorMessage!,
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: AppColors.textSub),
+              ),
+              const SizedBox(height: 18),
+              SystemButton(
+                label: 'إعادة المحاولة',
+                icon: Icons.refresh,
+                onPressed: _fetchPlayerRank,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
+}
+
+class _Rank {
+  const _Rank(this.code, this.title, this.requirement);
+
+  final String code;
+  final String title;
+  final String requirement;
 }

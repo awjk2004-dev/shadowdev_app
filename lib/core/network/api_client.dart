@@ -2,10 +2,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class ApiClient {
-  // يُمرَّر وقت البناء عبر --dart-define=API_URL=...
+  // يمكن تجاوزه وقت البناء عبر:
+  // flutter run --dart-define=API_URL=http://<HOST_IP>:8000/api/v1
+  //
+  // ملاحظة: على الهاتف الحقيقي لا يعمل localhost لأنه يشير إلى الهاتف نفسه،
+  // لذلك نستخدم عنوان الكمبيوتر على الشبكة المحلية.
   static const String baseUrl = String.fromEnvironment(
     'API_URL',
-    defaultValue: 'http://localhost:8000/api/v1',
+    defaultValue: 'http://10.94.11.66:8000/api/v1',
   );
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();

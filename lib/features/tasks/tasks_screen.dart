@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/design_system/chamfered_border.dart';
+import '../../../core/design_system/system_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../home/providers/player_provider.dart';
@@ -25,6 +27,7 @@ class _TasksScreenState extends State<TasksScreen>
     'body': 'الجسد',
     'work': 'العمل',
     'self': 'النفس',
+    'self_development': 'النفس',
     'relations': 'العلاقات',
   };
 
@@ -119,6 +122,10 @@ class _TasksScreenState extends State<TasksScreen>
           builder: (context, setState) {
             return AlertDialog(
               backgroundColor: AppColors.surface,
+              shape: const ChamferedBorder(
+                cut: 14,
+                side: BorderSide(color: AppColors.primary),
+              ),
               title: const Text('إضافة مهمة جديدة',
                   style: TextStyle(color: Colors.white)),
               content: Column(
@@ -203,90 +210,176 @@ class _TasksScreenState extends State<TasksScreen>
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('المهام اليومية'),
+        title: const Text('DAILY QUESTS // المهام'),
         backgroundColor: Colors.transparent,
       ),
       body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(color: AppColors.primary))
-          : ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 120),
-              itemCount: _tasks.length,
-              itemBuilder: (context, index) {
-                final task = _tasks[index];
-                final int taskId = task['id'] as int;
-                final bool isCompleted = _completedTaskIds.contains(taskId);
-
-                return Dismissible(
-                  key: Key(task['id'].toString()),
-                  direction:
-                      DismissDirection.endToStart, // السحب من اليسار لليمين
-                  background: Container(
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    color: Colors.red,
-                    child: const Icon(
-                      PhosphorIconsRegular.trashSimple,
-                      color: Colors.white,
-                    ),
-                  ),
-                  onDismissed: (direction) {
-                    _deleteTask(task['id']);
-                  },
-                  child: Card(
-                    color: isCompleted
-                        ? AppColors.primary.withValues(alpha: 0.12)
-                        : AppColors.surface,
-                    margin: const EdgeInsets.only(bottom: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                          color: AppColors.primary.withValues(alpha: 0.2)),
-                    ),
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 8),
-                      title: Text(
-                        task['title'],
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: isCompleted ? AppColors.textSub : Colors.white,
-                          decoration:
-                              isCompleted ? TextDecoration.lineThrough : null,
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+              children: [
+                _buildDailySummary(),
+                const SizedBox(height: 14),
+                if (_tasks.isEmpty)
+                  SystemPanel(
+                    dashed: true,
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.checklist,
+                          color: AppColors.inactive,
+                          size: 36,
                         ),
-                      ),
-                      subtitle: Text(
-                        _dimensionLabels[task['dimension']] ??
-                            task['dimension'].toString(),
-                        style: const TextStyle(color: AppColors.textSub),
-                      ),
-                      trailing: IconButton(
-                        icon: Icon(
-                          isCompleted
-                              ? PhosphorIconsFill.checkCircle
-                              : PhosphorIconsRegular.checkCircle,
-                          color: isCompleted
-                              ? AppColors.accent
-                              : AppColors.primary,
-                          size: 30,
+                        const SizedBox(height: 10),
+                        const Text(
+                          'لا توجد مهام بعد',
+                          style: TextStyle(
+                            color: AppColors.textMain,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        onPressed:
-                            isCompleted ? null : () => _completeTask(taskId),
-                      ),
+                        const SizedBox(height: 5),
+                        const Text(
+                          'أضف مهمة يومية لتبدأ تسجيل تقدمك.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSub),
+                        ),
+                        const SizedBox(height: 14),
+                        SystemButton(
+                          label: 'إضافة مهمة',
+                          icon: Icons.add,
+                          onPressed: _showAddTaskDialog,
+                        ),
+                      ],
                     ),
-                  ),
-                );
-              },
+                  )
+                else
+                  for (final task in _tasks) _buildTaskCard(task),
+              ],
             ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 80),
         child: FloatingActionButton(
           backgroundColor: AppColors.primary,
+          foregroundColor: AppColors.background,
+          shape: const ChamferedBorder(cut: 12),
           onPressed: _showAddTaskDialog,
+          tooltip: 'إضافة مهمة',
+          child: const Icon(PhosphorIconsRegular.plus),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDailySummary() {
+    final completed = _completedTaskIds.length;
+    final total = _tasks.length;
+    final progress = total == 0 ? 0.0 : (completed / total).clamp(0.0, 1.0);
+    return SystemPanel(
+      active: true,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SystemTag('DAILY QUESTS'),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$completed / $total مكتملة',
+                  style: const TextStyle(
+                    color: AppColors.textMain,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              Text(
+                'TOTAL $total',
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 5,
+            backgroundColor: AppColors.surfaceRaised,
+            borderRadius: BorderRadius.zero,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTaskCard(dynamic task) {
+    final int taskId = task['id'] as int;
+    final bool isCompleted = _completedTaskIds.contains(taskId);
+    final dimension = task['dimension']?.toString() ?? '';
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Dismissible(
+        key: Key(taskId.toString()),
+        direction: DismissDirection.endToStart,
+        background: Container(
+          alignment: Alignment.centerRight,
+          padding: const EdgeInsets.only(right: 20),
+          color: AppColors.surfaceRaised,
           child: const Icon(
-            PhosphorIconsRegular.plus,
-            color: Colors.white,
+            PhosphorIconsRegular.trashSimple,
+            color: AppColors.inactive,
+          ),
+        ),
+        onDismissed: (_) => _deleteTask(taskId),
+        child: SystemPanel(
+          active: isCompleted,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      task['title']?.toString() ?? 'مهمة بدون اسم',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: isCompleted
+                            ? AppColors.textSub
+                            : AppColors.textMain,
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    SystemTag(
+                      _dimensionLabels[dimension] ?? dimension,
+                      active: !isCompleted,
+                      compact: true,
+                    ),
+                  ],
+                ),
+              ),
+              Checkbox(
+                value: isCompleted,
+                onChanged: isCompleted ? null : (_) => _completeTask(taskId),
+                activeColor: AppColors.primary,
+                checkColor: AppColors.background,
+                side: BorderSide(
+                  color: isCompleted
+                      ? AppColors.inactive
+                      : AppColors.primary.withValues(alpha: 0.8),
+                  width: 1.5,
+                ),
+                shape: const ChamferedBorder(cut: 4),
+              ),
+            ],
           ),
         ),
       ),

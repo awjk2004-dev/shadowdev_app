@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:provider/provider.dart';
 import 'core/theme/app_theme.dart';
 import 'features/auth/screens/splash_screen.dart';
+import 'features/home/providers/player_provider.dart';
 import 'features/home/screens/home_screen.dart';
+import 'features/skills/providers/skill_tree_provider.dart';
 
 void main() {
   runApp(const ShadowDevApp());
@@ -13,19 +16,29 @@ class ShadowDevApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ShadowDev',
-      theme: AppTheme.darkTheme,
-      debugShowCheckedModeBanner: false,
-      locale: const Locale('ar'),
-      builder: (context, child) {
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: child!,
-        );
-      },
-      // 👇 هنا المنطق الذكي: نستخدم FutureBuilder لفحص التوكن
-      home: const _AuthCheck(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) => PlayerProvider()..fetchPlayerData(),
+        ),
+        ChangeNotifierProvider(
+          create: (_) => SkillTreeProvider(),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'ShadowDev',
+        theme: AppTheme.darkTheme,
+        debugShowCheckedModeBanner: false,
+        locale: const Locale('ar'),
+        builder: (context, child) {
+          return Directionality(
+            textDirection: TextDirection.rtl,
+            child: child!,
+          );
+        },
+        // 👇 هنا المنطق الذكي: نستخدم FutureBuilder لفحص التوكن
+        home: const _AuthCheck(),
+      ),
     );
   }
 }
@@ -42,7 +55,8 @@ class _AuthCheck extends StatelessWidget {
         if (snapshot.connectionState == ConnectionState.waiting) {
           // شاشة تحميل سريعة جداً (نصف ثانية)
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+            body: Center(
+                child: CircularProgressIndicator(color: AppColors.primary)),
           );
         }
 

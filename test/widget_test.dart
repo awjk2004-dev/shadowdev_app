@@ -1,6 +1,6 @@
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:shadowdev_app/main.dart';
+import 'package:shadowdev/main.dart';
 
 void main() {
   testWidgets('shows the splash screen when no access token is stored',

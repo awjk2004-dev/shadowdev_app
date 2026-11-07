@@ -1,9 +1,9 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:phosphor_icons/phosphor_icons.dart';
 
+import '../../../core/design_system/chamfered_border.dart';
+import '../../../core/design_system/system_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../auth/screens/login_screen.dart';
@@ -150,8 +150,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+          shape: ChamferedBorder(
+            cut: 14,
             side: BorderSide(
               color: AppColors.primary.withValues(alpha: 0.3),
             ),
@@ -225,8 +225,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (dialogContext) {
         return AlertDialog(
           backgroundColor: AppColors.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+          shape: ChamferedBorder(
+            cut: 14,
             side: BorderSide(
               color: AppColors.primary.withValues(alpha: 0.3),
             ),
@@ -314,58 +314,45 @@ class _ProfileScreenState extends State<ProfileScreen> {
         title: const Text('نافذة الحالة'),
         backgroundColor: Colors.transparent,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: RadialGradient(
-            colors: [
-              AppColors.surface.withValues(alpha: 0.85),
-              AppColors.background,
-            ],
-            radius: 1.4,
-          ),
-        ),
-        child: SafeArea(
-          child: _isLoading
-              ? const Center(
-                  child: CircularProgressIndicator(color: AppColors.primary),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
-                  child: Column(
-                    children: [
-                      _buildProfileHeader(),
-                      const SizedBox(height: 28),
-                      _buildStatsCard(),
-                      const SizedBox(height: 16),
-                      _buildTargetWeightButton(),
-                      const SizedBox(height: 20),
-                      _buildMenuButton(
-                        icon: PhosphorIconsRegular.medal,
-                        title: 'سُلّم الرتب',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const RanksScreen(),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildMenuButton(
-                        icon: PhosphorIconsRegular.pencilSimple,
-                        title: 'تعديل الاسم',
-                        onTap: _editNameDialog,
-                      ),
-                      _buildMenuButton(
-                        icon: PhosphorIconsRegular.signOut,
-                        title: 'تسجيل الخروج',
-                        color: Colors.redAccent,
-                        onTap: _logout,
-                      ),
-                    ],
-                  ),
+      body: SafeArea(
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+                child: Column(
+                  children: [
+                    _buildProfileHeader(),
+                    const SizedBox(height: 28),
+                    _buildStatsCard(),
+                    const SizedBox(height: 16),
+                    _buildTargetWeightButton(),
+                    const SizedBox(height: 20),
+                    _buildMenuButton(
+                      icon: PhosphorIconsRegular.medal,
+                      title: 'سُلّم الرتب',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const RanksScreen(),
+                          ),
+                        );
+                      },
+                    ),
+                    _buildMenuButton(
+                      icon: PhosphorIconsRegular.pencilSimple,
+                      title: 'تعديل الاسم',
+                      onTap: _editNameDialog,
+                    ),
+                    _buildMenuButton(
+                      icon: PhosphorIconsRegular.signOut,
+                      title: 'تسجيل الخروج',
+                      color: AppColors.inactive,
+                      onTap: _logout,
+                    ),
+                  ],
                 ),
-        ),
+              ),
       ),
     );
   }
@@ -381,13 +368,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: AppColors.primary.withValues(alpha: 0.6),
               width: 2,
             ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.45),
-                blurRadius: 30,
-                spreadRadius: 4,
-              ),
-            ],
           ),
           child: const CircleAvatar(
             radius: 52,
@@ -418,32 +398,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 7),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.7),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.35),
-                blurRadius: 18,
-                spreadRadius: 1,
-              ),
-            ],
-          ),
-          child: Text(
-            '$_rank-RANK',
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primary,
-              letterSpacing: 2,
-            ),
-          ),
-        ),
+        SystemTag('$_rank-RANK'),
       ],
     );
   }
@@ -455,7 +410,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     });
     final denominator = maxStat > 0 ? maxStat : 1;
 
-    return _GlassCard(
+    return _SystemCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -561,18 +516,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ? 'تعديل الوزن المستهدف (${_targetWeight.toStringAsFixed(1)} كجم)'
         : 'تحديد الوزن المستهدف';
 
-    return Container(
+    return SizedBox(
       width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.18),
-            blurRadius: 18,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
       child: OutlinedButton.icon(
         onPressed: _editTargetWeightDialog,
         icon: const Icon(
@@ -593,9 +538,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: AppColors.primary.withValues(alpha: 0.5),
           ),
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
+          shape: const ChamferedBorder(cut: 12),
         ),
       ),
     );
@@ -609,16 +552,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
+      decoration: ShapeDecoration(
         color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+        shape: ChamferedBorder(
+          cut: 11,
+          side: BorderSide(
+            color: AppColors.primary.withValues(alpha: 0.2),
+          ),
         ),
       ),
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
+        shape: const ChamferedBorder(cut: 11),
         clipBehavior: Clip.antiAlias,
         child: ListTile(
           contentPadding: const EdgeInsets.symmetric(
@@ -638,7 +583,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: color == Colors.redAccent ? color : AppColors.textMain,
+              color: color == AppColors.inactive ? color : AppColors.textMain,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -654,29 +599,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 }
 
-class _GlassCard extends StatelessWidget {
-  const _GlassCard({required this.child});
+class _SystemCard extends StatelessWidget {
+  const _SystemCard({required this.child});
 
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-        child: Container(
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: AppColors.primary.withValues(alpha: 0.2),
-            ),
-          ),
-          child: child,
-        ),
-      ),
-    );
+    return SystemPanel(child: child);
   }
 }
