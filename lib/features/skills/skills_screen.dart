@@ -38,7 +38,11 @@ class _SkillsScreenState extends State<SkillsScreen>
   @override
   void initState() {
     super.initState();
-    unawaited(context.read<SkillTreeProvider>().fetchSkills());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        unawaited(context.read<SkillTreeProvider>().fetchSkills());
+      }
+    });
   }
 
   @override
