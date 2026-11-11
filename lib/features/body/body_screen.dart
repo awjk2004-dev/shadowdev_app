@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
+import '../home/providers/player_provider.dart';
+import '../skills/providers/skill_tree_provider.dart';
+import 'body_metrics.dart';
 
 class BodyScreen extends StatefulWidget {
   const BodyScreen({super.key});
@@ -96,6 +100,18 @@ class _BodyScreenState extends State<BodyScreen>
         // تبقى بيانات الوزن متاحة حتى لو تعذر حساب BMI
       }
 
+      final height = _toDouble(playerData['height']);
+      final calculatedBmi = BodyMetrics.calculateBmi(
+        weightKg: currentWeight,
+        height: height,
+      );
+      if (calculatedBmi != null) {
+        bmiValue = calculatedBmi;
+        bmiCategory = BodyMetrics.categoryForBmi(calculatedBmi);
+      } else if (bmiValue > 0) {
+        bmiCategory = BodyMetrics.categoryForBmi(bmiValue);
+      }
+
       if (!mounted) return;
       setState(() {
         _currentWeight = currentWeight;
@@ -115,6 +131,8 @@ class _BodyScreenState extends State<BodyScreen>
   }
 
   Future<void> _saveInitialWeights() async {
+    final playerProvider = context.read<PlayerProvider>();
+    final skillTreeProvider = context.read<SkillTreeProvider>();
     final currentWeight = double.tryParse(_currentWeightController.text.trim());
     final targetWeight = double.tryParse(_targetWeightController.text.trim());
 
@@ -135,7 +153,11 @@ class _BodyScreenState extends State<BodyScreen>
       await _apiClient.updateTargetWeight(targetWeight);
       if (!mounted) return;
 
-      await _fetchBodyData();
+      await Future.wait([
+        _fetchBodyData(),
+        playerProvider.fetchPlayerData(),
+        skillTreeProvider.fetchSkills(),
+      ]);
       if (!mounted) return;
 
       _currentWeightController.clear();
@@ -574,13 +596,20 @@ class _BodyScreenState extends State<BodyScreen>
                       ),
                     ),
                     onPressed: () async {
+                      final playerProvider = context.read<PlayerProvider>();
+                      final skillTreeProvider =
+                          context.read<SkillTreeProvider>();
                       final weight = double.tryParse(controller.text);
                       if (weight != null && weight > 0) {
                         Navigator.pop(dialogContext);
                         try {
                           await _apiClient.recordWeight(weight);
                           if (!mounted) return;
-                          await _fetchBodyData();
+                          await Future.wait([
+                            _fetchBodyData(),
+                            playerProvider.fetchPlayerData(),
+                            skillTreeProvider.fetchSkills(),
+                          ]);
                           messenger.showSnackBar(
                             const SnackBar(
                               content: Text('تم تسجيل الوزن بنجاح!'),

@@ -7,6 +7,8 @@ import '../../../core/design_system/system_widgets.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/network/api_client.dart';
 import '../home/providers/player_provider.dart';
+import '../skills/providers/skill_tree_provider.dart';
+import 'task_completion_store.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -21,6 +23,7 @@ class _TasksScreenState extends State<TasksScreen>
   bool _isLoading = true;
   List<dynamic> _tasks = [];
   final Set<int> _completedTaskIds = {};
+  TaskCompletionStore? _completionStore;
 
   static const Map<String, String> _dimensionLabels = {
     'mind': 'العقل',
@@ -64,8 +67,34 @@ class _TasksScreenState extends State<TasksScreen>
       final response = await _apiClient.getTasks();
       if (!mounted) return;
       if (response.statusCode == 200) {
+        final tasks = List<dynamic>.from(response.data as List);
+        var completionStore = _completionStore;
+        if (completionStore == null) {
+          final userResponse = await _apiClient.getUserData();
+          final userData = Map<String, dynamic>.from(userResponse.data as Map);
+          final owner = (userData['username'] ?? userData['id'])?.toString();
+          if (owner == null || owner.isEmpty) {
+            throw const FormatException('Task owner is missing');
+          }
+          completionStore = TaskCompletionStore(owner: owner);
+        }
+
+        final completedIds = await completionStore.loadToday();
+        final taskIds = tasks.map(_taskId).toSet();
+        completedIds.removeWhere((id) => !taskIds.contains(id));
+        for (final task in tasks) {
+          if (task['is_completed'] == true) {
+            completedIds.add(_taskId(task));
+          }
+        }
+
+        await completionStore.saveToday(completedIds);
+        _completionStore = completionStore;
         setState(() {
-          _tasks = response.data;
+          _tasks = tasks;
+          _completedTaskIds
+            ..clear()
+            ..addAll(completedIds);
           _isLoading = false;
         });
       }
@@ -79,7 +108,17 @@ class _TasksScreenState extends State<TasksScreen>
   }
 
   Future<void> _completeTask(int taskId) async {
-    if (_completedTaskIds.contains(taskId)) return;
+    final playerProvider = context.read<PlayerProvider>();
+    final skillTreeProvider = context.read<SkillTreeProvider>();
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+    final task = _tasks.firstWhere(
+      (item) => _taskId(item) == taskId,
+      orElse: () => null,
+    );
+    // مكتملة مسبقاً؟ لا نفعل شيئاً ولا نعرض أي خطأ
+    if (_completedTaskIds.contains(taskId) || task?['is_completed'] == true) {
+      return;
+    }
 
     // تحديث تفاؤلي فوري قبل انتظار استجابة الخادم
     setState(() => _completedTaskIds.add(taskId));
@@ -88,21 +127,42 @@ class _TasksScreenState extends State<TasksScreen>
       final response = await _apiClient.completeTask(taskId);
       if (!mounted) return;
 
-      final task = _tasks.firstWhere((item) => item['id'] == taskId);
+      var completionSaved = true;
+      try {
+        await _completionStore!.saveToday(_completedTaskIds);
+      } catch (error, stackTrace) {
+        completionSaved = false;
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'task completion storage',
+          ),
+        );
+      }
+
       final responseReward =
           response.data is Map ? response.data['xp_earned']?.toString() : null;
       final xpEarned = int.tryParse(responseReward ?? '') ?? _taskReward(task);
 
-      ScaffoldMessenger.of(context).showSnackBar(
+      scaffoldMessenger.showSnackBar(
         SnackBar(
-          content: Text('أحسنت! +$xpEarned XP'),
+          content: Text(
+            completionSaved
+                ? 'أحسنت! +$xpEarned XP'
+                : 'اكتملت المهمة، لكن تعذر حفظ حالتها على الجهاز',
+          ),
           backgroundColor: AppColors.primary,
           behavior: SnackBarBehavior.floating,
         ),
       );
 
-      // تحديث بيانات اللاعب (XP والمستوى والسلسلة) في الواجهة الرئيسية
-      context.read<PlayerProvider>().fetchPlayerData();
+      // تحديث بيانات اللاعب (XP والمستوى والسلسلة) وقائمة المهام في نفس الوقت
+      await Future.wait([
+        playerProvider.fetchPlayerData(),
+        skillTreeProvider.fetchSkills(),
+        _fetchTasks(),
+      ]);
     } catch (e) {
       if (!mounted) return;
 
@@ -116,7 +176,7 @@ class _TasksScreenState extends State<TasksScreen>
   }
 
   Future<void> _deleteTask(int taskId) async {
-    final taskIndex = _tasks.indexWhere((task) => task['id'] == taskId);
+    final taskIndex = _tasks.indexWhere((task) => _taskId(task) == taskId);
     if (taskIndex == -1) return;
 
     final task = _tasks[taskIndex];
@@ -519,7 +579,11 @@ class _TasksScreenState extends State<TasksScreen>
   }
 
   Widget _buildDailySummary() {
-    final completed = _completedTaskIds.length;
+    final completed = _tasks
+        .where((task) =>
+            task['is_completed'] == true ||
+            _completedTaskIds.contains(_taskId(task)))
+        .length;
     final total = _tasks.length;
     final progress = total == 0 ? 0.0 : (completed / total).clamp(0.0, 1.0);
     return SystemPanel(
@@ -564,8 +628,9 @@ class _TasksScreenState extends State<TasksScreen>
   }
 
   Widget _buildTaskCard(dynamic task) {
-    final int taskId = task['id'] as int;
-    final bool isCompleted = _completedTaskIds.contains(taskId);
+    final int taskId = _taskId(task);
+    final bool isCompleted =
+        task['is_completed'] == true || _completedTaskIds.contains(taskId);
     final dimension = task['dimension']?.toString() ?? '';
     final difficulty = task['difficulty']?.toString() ?? 'easy';
     final xpReward = _taskReward(task);
@@ -648,23 +713,38 @@ class _TasksScreenState extends State<TasksScreen>
                   ],
                 ),
               ),
-              Checkbox(
-                value: isCompleted,
-                onChanged: isCompleted ? null : (_) => _completeTask(taskId),
-                activeColor: AppColors.primary,
-                checkColor: AppColors.background,
-                side: BorderSide(
-                  color: isCompleted
-                      ? AppColors.inactive
-                      : AppColors.primary.withValues(alpha: 0.8),
-                  width: 1.5,
-                ),
-                shape: const ChamferedBorder(cut: 4),
-              ),
+              isCompleted
+                  ? const Icon(
+                      PhosphorIconsFill.checkCircle,
+                      color: Colors.greenAccent,
+                      size: 26,
+                    )
+                  : Checkbox(
+                      value: false,
+                      onChanged: (_) => _completeTask(taskId),
+                      activeColor: AppColors.primary,
+                      checkColor: AppColors.background,
+                      side: BorderSide(
+                        color: AppColors.primary.withValues(alpha: 0.8),
+                        width: 1.5,
+                      ),
+                      shape: const ChamferedBorder(cut: 4),
+                    ),
             ],
           ),
         ),
       ),
     );
+  }
+
+  int _taskId(dynamic task) {
+    if (task is! Map) {
+      throw const FormatException('Task must be an object');
+    }
+    final id = int.tryParse(task['id']?.toString() ?? '');
+    if (id == null) {
+      throw const FormatException('Task ID is missing or invalid');
+    }
+    return id;
   }
 }

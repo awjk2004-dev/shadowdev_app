@@ -8,8 +8,8 @@ class ApiClient {
   // ملاحظة: على الهاتف الحقيقي لا يعمل localhost لأنه يشير إلى الهاتف نفسه،
   // لذلك نستخدم عنوان الكمبيوتر على الشبكة المحلية.
   static const String baseUrl = String.fromEnvironment(
-  'API_URL',
-  defaultValue: 'https://shadowdev-backend.onrender.com/api/v1',
+    'API_URL',
+    defaultValue: 'https://shadowdev-backend.onrender.com/api/v1',
   );
   final Dio _dio = Dio();
   final FlutterSecureStorage _storage = const FlutterSecureStorage();
@@ -114,6 +114,14 @@ class ApiClient {
 
   Future<Response> upgradeSkill(int skillId) async {
     return await _dio.patch('/skills/me/$skillId');
+  }
+
+  Future<Response> unlockSkill(int skillId) async {
+    return await _dio.post('/skills/me/$skillId/unlock');
+  }
+
+  Future<Response> resetSkillTree() async {
+    return await _dio.post('/skills/me/reset');
   }
 
   // 5. الوزن (Weight)

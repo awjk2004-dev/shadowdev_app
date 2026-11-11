@@ -1,9 +1,12 @@
+import 'dart:async';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../core/design_system/chamfered_border.dart';
 import '../../core/theme/app_theme.dart';
-import 'data/default_skill_tree.dart';
+import 'data/skill_tree_layout.dart';
 import 'models/skill.dart';
 import 'providers/skill_tree_provider.dart';
 import 'widgets/skill_node.dart';
@@ -16,6 +19,14 @@ class SkillsScreen extends StatefulWidget {
   State<SkillsScreen> createState() => _SkillsScreenState();
 }
 
+String _actionErrorMessage(Object error) {
+  if (error is DioException && error.response?.data is Map) {
+    final detail = error.response!.data['detail'];
+    if (detail is String && detail.isNotEmpty) return detail;
+  }
+  return 'تعذر حفظ التغيير على الخادم. حاول مرة أخرى.';
+}
+
 class _SkillsScreenState extends State<SkillsScreen>
     with AutomaticKeepAliveClientMixin {
   final TransformationController _transformController =
@@ -23,6 +34,12 @@ class _SkillsScreenState extends State<SkillsScreen>
 
   Size _viewport = Size.zero;
   bool _viewInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(context.read<SkillTreeProvider>().fetchSkills());
+  }
 
   @override
   bool get wantKeepAlive => true;
@@ -69,16 +86,33 @@ class _SkillsScreenState extends State<SkillsScreen>
               );
             },
           ),
-          IconButton(
-            tooltip: 'إعادة تعيين الشجرة',
-            onPressed: _confirmReset,
-            icon: const Icon(Icons.restart_alt),
+          Consumer<SkillTreeProvider>(
+            builder: (context, tree, _) {
+              return IconButton(
+                tooltip: 'إعادة تعيين الشجرة',
+                onPressed:
+                    tree.skills.isEmpty || tree.isLoading || tree.isMutating
+                        ? null
+                        : _confirmReset,
+                icon: const Icon(Icons.restart_alt),
+              );
+            },
           ),
           const SizedBox(width: 4),
         ],
       ),
       body: Consumer<SkillTreeProvider>(
         builder: (context, tree, _) {
+          if (tree.isLoading && tree.skills.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          if (tree.errorMessage != null && tree.skills.isEmpty) {
+            return _buildLoadError(context, tree);
+          }
+          if (tree.skills.isEmpty) {
+            return _buildNoSkills(tree);
+          }
+
           return LayoutBuilder(
             builder: (context, constraints) {
               _viewport = Size(constraints.maxWidth, constraints.maxHeight);
@@ -99,6 +133,56 @@ class _SkillsScreenState extends State<SkillsScreen>
             },
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildNoSkills(SkillTreeProvider tree) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'لا توجد مهارات مرتبطة بهذا الحساب. تأكد من تطبيق تحديثات الباك إند.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: AppColors.textSub),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed:
+                  tree.isLoading ? null : () => unawaited(tree.fetchSkills()),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoadError(BuildContext context, SkillTreeProvider tree) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              tree.errorMessage!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: AppColors.textSub),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              onPressed:
+                  tree.isLoading ? null : () => unawaited(tree.fetchSkills()),
+              icon: const Icon(Icons.refresh),
+              label: const Text('إعادة المحاولة'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -142,12 +226,33 @@ class _SkillsScreenState extends State<SkillsScreen>
     );
   }
 
-  void _onSkillTap(
+  Future<void> _onSkillTap(
     BuildContext context,
     SkillTreeProvider tree,
     Skill skill,
-  ) {
-    final result = tree.unlock(skill.id);
+  ) async {
+    final UnlockResult result;
+    try {
+      result = await tree.unlock(skill.id);
+    } catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'skill unlock',
+        ),
+      );
+      if (context.mounted) {
+        _showMessage(
+          context,
+          _actionErrorMessage(error),
+          AppColors.surface,
+        );
+      }
+      return;
+    }
+
+    if (!context.mounted) return;
 
     switch (result) {
       case UnlockResult.success:
@@ -209,7 +314,8 @@ class _SkillsScreenState extends State<SkillsScreen>
       builder: (sheetContext) {
         final missing = tree.missingPrerequisites(skill);
         final canUnlock = skill.status == SkillStatus.available &&
-            tree.skillPoints >= skill.cost;
+            tree.skillPoints >= skill.cost &&
+            !tree.isMutating;
 
         return Container(
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
@@ -341,7 +447,7 @@ class _SkillsScreenState extends State<SkillsScreen>
                         : canUnlock
                             ? () {
                                 Navigator.of(sheetContext).pop();
-                                _onSkillTap(context, tree, skill);
+                                unawaited(_onSkillTap(context, tree, skill));
                               }
                             : null,
                     style: FilledButton.styleFrom(
@@ -395,7 +501,7 @@ class _SkillsScreenState extends State<SkillsScreen>
             style: TextStyle(color: AppColors.textMain),
           ),
           content: const Text(
-            'سيتم إغلاق كل المهارات واستعادة نقاط SP الافتراضية. هل تريد المتابعة؟',
+            'سيتم إغلاق المهارات المفتوحة واستعادة نقاط SP المكتسبة. هل تريد المتابعة؟',
             style: TextStyle(color: AppColors.textSub),
           ),
           actions: [
@@ -408,12 +514,36 @@ class _SkillsScreenState extends State<SkillsScreen>
                 backgroundColor: AppColors.primary,
                 foregroundColor: Colors.white,
               ),
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-                tree.reset();
-                _showMessage(context, 'تمت إعادة تعيين شجرة المهارات',
-                    AppColors.primary);
-              },
+              onPressed: tree.isMutating
+                  ? null
+                  : () async {
+                      Navigator.of(dialogContext).pop();
+                      try {
+                        await tree.reset();
+                        if (mounted) {
+                          _showMessage(
+                            context,
+                            'تمت إعادة تعيين شجرة المهارات',
+                            AppColors.primary,
+                          );
+                        }
+                      } catch (error, stackTrace) {
+                        FlutterError.reportError(
+                          FlutterErrorDetails(
+                            exception: error,
+                            stack: stackTrace,
+                            library: 'skill tree reset',
+                          ),
+                        );
+                        if (mounted) {
+                          _showMessage(
+                            context,
+                            _actionErrorMessage(error),
+                            AppColors.surface,
+                          );
+                        }
+                      }
+                    },
               child: const Text('إعادة'),
             ),
           ],

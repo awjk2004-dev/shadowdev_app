@@ -12,6 +12,9 @@ class PlayerProvider extends ChangeNotifier {
   int xp = 0;
   int level = 1;
   String rank = 'E';
+  int xpToNextLevel = 100;
+  int tasksCompleted = 0;
+  int tasksTotal = 0;
   int currentStreak = 0;
   bool isLoading = true;
   String? errorMessage;
@@ -59,9 +62,16 @@ class PlayerProvider extends ChangeNotifier {
       xp = playerData['xp'] as int? ?? xp;
       level = playerData['level'] as int? ?? level;
       rank = playerData['rank'] as String? ?? rank;
+      xpToNextLevel = playerData['xp_to_next_level'] == null
+          ? 100
+          : (_asInt(playerData['xp_to_next_level']) > 0
+              ? _asInt(playerData['xp_to_next_level'])
+              : 100);
 
       final streak = streakData['current_streak'] ?? streakData['streak'];
       currentStreak = streak is int ? streak : currentStreak;
+      tasksCompleted = _asInt(streakData['tasks_completed']);
+      tasksTotal = _asInt(streakData['tasks_total']);
       await _updateStreakWidget(currentStreak);
 
       try {

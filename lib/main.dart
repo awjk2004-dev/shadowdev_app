@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
@@ -56,12 +58,38 @@ Future<void> _handleWidgetInteraction(Uri? uri) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ShadowDevApp());
+
   if (defaultTargetPlatform == TargetPlatform.android) {
+    unawaited(_initializeAndroidServices());
+  }
+}
+
+Future<void> _initializeAndroidServices() async {
+  try {
     await HomeWidget.registerInteractivityCallback(_handleWidgetInteraction);
+  } catch (error, stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'home widget startup',
+      ),
+    );
+  }
+
+  try {
     await LocalNotificationService.instance.initialize();
     await LocalNotificationService.instance.restoreDailyReminder();
+  } catch (error, stackTrace) {
+    FlutterError.reportError(
+      FlutterErrorDetails(
+        exception: error,
+        stack: stackTrace,
+        library: 'notification startup',
+      ),
+    );
   }
-  runApp(const ShadowDevApp());
 }
 
 class ShadowDevApp extends StatelessWidget {

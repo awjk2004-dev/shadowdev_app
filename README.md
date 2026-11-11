@@ -46,7 +46,7 @@ lib/
 - The app uses a dark holographic interface with a `#0A0A0F` background, slate surfaces, and a consistent cyan neon accent (`#00F0FF`), without purple accents.
 - Panels, fields, and buttons use chamfered borders. Inactive states use gray dashed borders. The interface avoids blur and heavy shadows.
 - The home screen displays player status, an attribute chart, level experience, and the daily streak, with navigation to tasks, skills, ranks, and body tracking.
-- The skill tree contains connected, pannable and zoomable nodes, with details and requirements shown before spending SP. The rank screen displays ranks from E to S, and tasks support categorization, completion, and swipe-based editing.
+- The skill tree loads its nodes and unlock state from the authenticated backend. The server validates prerequisites, deducts SP, and persists unlocks; the client displays connected, pannable and zoomable nodes. The rank screen displays ranks from E to S, and tasks support categorization, completion, and swipe-based editing.
 - The interface is Arabic and right-to-left, with concise technical system labels. Android launcher icons are generated from `assets/images/logo.png`.
 
 ### Reminders and Android home widget
@@ -57,6 +57,9 @@ lib/
 - Persisting task difficulty and rewards requires the backend to accept `difficulty` (`easy`, `medium`, `hard`) and `xp_reward` (`10`, `25`, `50`) when creating and updating tasks. The backend source code is not part of this repository, so compatibility with this contract cannot be verified here.
 
 ### Backend connection
+
+- The backend seeds the skill-tree catalog through its Alembic migration. Existing players receive 10 starting SP plus one SP per level already reached; future level-ups award one SP. Resetting the tree on the server re-locks skills and restores all earned SP.
+- Apply backend migrations before using the connected skill tree. The skill tree requires `GET /api/v1/skills/me`, `POST /api/v1/skills/me/{skill_id}/unlock`, `POST /api/v1/skills/me/reset`, and `GET /api/v1/player/me` with `skill_points`.
 
 - `lib/core/network/api_client.dart` uses the following development API URL by default:
 

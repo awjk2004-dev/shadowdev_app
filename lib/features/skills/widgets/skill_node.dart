@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/design_system/chamfered_border.dart';
 import '../../../core/theme/app_theme.dart';
-import '../data/default_skill_tree.dart';
+import '../data/skill_tree_layout.dart';
 import '../models/skill.dart';
 
 /// عقدة مهارة واحدة. تُعزل داخل RepaintBoundary حتى لا تتسبب إعادة رسمها

@@ -249,7 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
           const SizedBox(height: 12),
           _buildStatusRadarCard(player),
           const SizedBox(height: 12),
-          _buildTasksCard(),
+          _buildTasksCard(player),
           const SizedBox(height: 24),
         ],
       ),
@@ -257,7 +257,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildPlayerCard(PlayerProvider player) {
-    final progress = (player.xp % 100) / 100;
+    final xpIntoLevel =
+        player.xpToNextLevel > 0 ? player.xp % player.xpToNextLevel : 0;
+    final progress = player.xpToNextLevel > 0
+        ? xpIntoLevel / player.xpToNextLevel
+        : 0.0;
     return SystemPanel(
       active: true,
       child: Column(
@@ -326,7 +330,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Text(
-                '${player.xp % 100} / 100 XP',
+                '$xpIntoLevel / ${player.xpToNextLevel} XP',
                 style: const TextStyle(
                   color: AppColors.primary,
                   fontSize: 11,
@@ -411,7 +415,11 @@ class _HomeScreenState extends State<HomeScreen> {
       maxTick,
     ];
 
-    final progress = (player.xp % 100) / 100;
+    final xpIntoLevel =
+        player.xpToNextLevel > 0 ? player.xp % player.xpToNextLevel : 0;
+    final progress = player.xpToNextLevel > 0
+        ? xpIntoLevel / player.xpToNextLevel
+        : 0.0;
 
     return SystemPanel(
       child: Column(
@@ -501,7 +509,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               Text(
-                '${player.xp % 100} / 100',
+                '$xpIntoLevel / ${player.xpToNextLevel}',
                 style: const TextStyle(
                   fontSize: 12,
                   color: AppColors.textSub,
@@ -524,27 +532,46 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildTasksCard() {
+  Widget _buildTasksCard(PlayerProvider player) {
+    final remaining =
+        player.tasksTotal > player.tasksCompleted
+            ? player.tasksTotal - player.tasksCompleted
+            : 0;
     return SystemPanel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(
+              const Icon(
                 PhosphorIconsRegular.checkCircle,
                 color: AppColors.accent,
                 size: 26,
               ),
-              SizedBox(width: 12),
+              const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'مهامك اليومية بانتظارك',
-                  style: TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textMain,
-                  ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'مهامك اليومية بانتظارك',
+                      style: TextStyle(
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textMain,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      remaining > 0
+                          ? '$remaining من ${player.tasksTotal} مهام متبقية اليوم'
+                          : 'أكملت كل مهام اليوم، أحسنت!',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSub,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
