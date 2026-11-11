@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/widgets/streak_home_widget_service.dart';
@@ -51,13 +52,12 @@ class PlayerProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final responses = await Future.wait([
-        _apiClient.getPlayerData(),
-        _apiClient.getStreakData(),
-      ]);
-
-      final playerData = responses[0].data as Map<String, dynamic>? ?? {};
-      final streakData = responses[1].data as Map<String, dynamic>? ?? {};
+      final playerResponse = await _apiClient.getPlayerData();
+      final rawPlayerData = playerResponse.data;
+      if (rawPlayerData is! Map) {
+        throw const FormatException('Invalid player response');
+      }
+      final playerData = Map<String, dynamic>.from(rawPlayerData);
 
       xp = playerData['xp'] as int? ?? xp;
       level = playerData['level'] as int? ?? level;
@@ -68,10 +68,26 @@ class PlayerProvider extends ChangeNotifier {
               ? _asInt(playerData['xp_to_next_level'])
               : 100);
 
-      final streak = streakData['current_streak'] ?? streakData['streak'];
-      currentStreak = streak is int ? streak : currentStreak;
-      tasksCompleted = _asInt(streakData['tasks_completed']);
-      tasksTotal = _asInt(streakData['tasks_total']);
+      try {
+        final streakResponse = await _apiClient.getStreakData();
+        final rawStreakData = streakResponse.data;
+        if (rawStreakData is! Map) {
+          throw const FormatException('Invalid streak response');
+        }
+        final streakData = Map<String, dynamic>.from(rawStreakData);
+        final streak = streakData['current_streak'] ?? streakData['streak'];
+        currentStreak = streak is int ? streak : currentStreak;
+        tasksCompleted = _asInt(streakData['tasks_completed']);
+        tasksTotal = _asInt(streakData['tasks_total']);
+      } catch (error, stackTrace) {
+        FlutterError.reportError(
+          FlutterErrorDetails(
+            exception: error,
+            stack: stackTrace,
+            library: 'player streak loading',
+          ),
+        );
+      }
       await _updateStreakWidget(currentStreak);
 
       try {
@@ -89,11 +105,48 @@ class PlayerProvider extends ChangeNotifier {
       } catch (_) {
         // تظل بيانات اللاعب والسلسلة متاحة حتى لو تعذر جلب الإحصائيات
       }
-    } catch (_) {
-      errorMessage = 'تعذر جلب بيانات اللاعب، يرجى المحاولة مرة أخرى';
+    } catch (error, stackTrace) {
+      errorMessage = _playerLoadErrorMessage(error);
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'player data loading',
+        ),
+      );
     } finally {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  String _playerLoadErrorMessage(Object error) {
+    if (error is DioException) {
+      final statusCode = error.response?.statusCode;
+      if (statusCode == 401 || statusCode == 403) {
+        return 'انتهت صلاحية تسجيل الدخول أو لا يملك الحساب صلاحية الوصول. سجّل الدخول مجددًا.';
+      }
+      if (statusCode == 404) {
+        return 'لم يعثر الخادم على بيانات اللاعب لهذا الحساب.';
+      }
+      if (statusCode != null && statusCode >= 500) {
+        return 'حدث خطأ داخل الخادم ($statusCode). تحقق من تطبيق تحديثات الباك إند وقاعدة البيانات.';
+      }
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.connectionError) {
+        return 'تعذر الاتصال بالخادم. تحقق من الإنترنت وعنوان الخادم ثم حاول مجددًا.';
+      }
+      if (statusCode != null) {
+        return 'رفض الخادم جلب بيانات اللاعب (HTTP $statusCode).';
+      }
+    }
+
+    if (error is FormatException) {
+      return 'استجابة بيانات اللاعب من الخادم غير مكتملة أو غير متوافقة.';
+    }
+
+    return 'تعذر جلب بيانات اللاعب بسبب خطأ غير متوقع.';
   }
 }

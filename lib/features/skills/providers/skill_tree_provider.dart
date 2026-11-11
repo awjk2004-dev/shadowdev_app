@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:dio/dio.dart';
 
 import '../../../core/network/api_client.dart';
 import '../models/skill.dart';
@@ -72,7 +73,7 @@ class SkillTreeProvider extends ChangeNotifier {
       _skillPoints = rawPoints.toInt();
       _recomputeStatuses();
     } catch (error, stackTrace) {
-      errorMessage = 'تعذر تحميل شجرة المهارات. تحقق من الاتصال وحاول مجددًا.';
+      errorMessage = _loadErrorMessage(error);
       FlutterError.reportError(
         FlutterErrorDetails(
           exception: error,
@@ -84,6 +85,36 @@ class SkillTreeProvider extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
+  }
+
+  String _loadErrorMessage(Object error) {
+    if (error is DioException) {
+      final statusCode = error.response?.statusCode;
+      if (statusCode == 401 || statusCode == 403) {
+        return 'انتهت صلاحية تسجيل الدخول أو لا يملك الحساب صلاحية الوصول. سجّل الدخول مجددًا.';
+      }
+      if (statusCode == 404) {
+        return 'مسار شجرة المهارات غير موجود على الخادم. تحقق من تحديث الباك إند.';
+      }
+      if (statusCode != null && statusCode >= 500) {
+        return 'حدث خطأ داخل الخادم ($statusCode). قد يحتاج تحديث قاعدة البيانات إلى التطبيق.';
+      }
+      if (error.type == DioExceptionType.connectionTimeout ||
+          error.type == DioExceptionType.sendTimeout ||
+          error.type == DioExceptionType.receiveTimeout ||
+          error.type == DioExceptionType.connectionError) {
+        return 'تعذر الاتصال بالخادم. تحقق من الإنترنت وعنوان الخادم ثم حاول مجددًا.';
+      }
+      if (statusCode != null) {
+        return 'رفض الخادم تحميل شجرة المهارات (HTTP $statusCode).';
+      }
+    }
+
+    if (error is FormatException) {
+      return 'استجابة الخادم لا تتوافق مع شجرة المهارات. تأكد من تطبيق تحديثات الباك إند وقاعدة البيانات.';
+    }
+
+    return 'تعذر تحميل شجرة المهارات بسبب خطأ غير متوقع.';
   }
 
   Skill? byId(String id) {

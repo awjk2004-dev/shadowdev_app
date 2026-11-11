@@ -21,6 +21,7 @@ class _TasksScreenState extends State<TasksScreen>
     with AutomaticKeepAliveClientMixin {
   final _apiClient = ApiClient();
   bool _isLoading = true;
+  bool _loadFailed = false;
   List<dynamic> _tasks = [];
   final Set<int> _completedTaskIds = {};
   TaskCompletionStore? _completionStore;
@@ -62,48 +63,61 @@ class _TasksScreenState extends State<TasksScreen>
 
   Future<void> _fetchTasks() async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _loadFailed = false;
+    });
     try {
       final response = await _apiClient.getTasks();
       if (!mounted) return;
-      if (response.statusCode == 200) {
-        final tasks = List<dynamic>.from(response.data as List);
-        var completionStore = _completionStore;
-        if (completionStore == null) {
-          final userResponse = await _apiClient.getUserData();
-          final userData = Map<String, dynamic>.from(userResponse.data as Map);
-          final owner = (userData['username'] ?? userData['id'])?.toString();
-          if (owner == null || owner.isEmpty) {
-            throw const FormatException('Task owner is missing');
-          }
-          completionStore = TaskCompletionStore(owner: owner);
-        }
-
-        final completedIds = await completionStore.loadToday();
-        final taskIds = tasks.map(_taskId).toSet();
-        completedIds.removeWhere((id) => !taskIds.contains(id));
-        for (final task in tasks) {
-          if (task['is_completed'] == true) {
-            completedIds.add(_taskId(task));
-          }
-        }
-
-        await completionStore.saveToday(completedIds);
-        _completionStore = completionStore;
-        setState(() {
-          _tasks = tasks;
-          _completedTaskIds
-            ..clear()
-            ..addAll(completedIds);
-          _isLoading = false;
-        });
+      if (response.statusCode != 200 || response.data is! List) {
+        throw const FormatException('Invalid task list response');
       }
-    } catch (e) {
+
+      final tasks = List<dynamic>.from(response.data as List);
+      var completionStore = _completionStore;
+      if (completionStore == null) {
+        final userResponse = await _apiClient.getUserData();
+        final userData = Map<String, dynamic>.from(userResponse.data as Map);
+        final owner = (userData['username'] ?? userData['id'])?.toString();
+        if (owner == null || owner.isEmpty) {
+          throw const FormatException('Task owner is missing');
+        }
+        completionStore = TaskCompletionStore(owner: owner);
+      }
+
+      final completedIds = await completionStore.loadToday();
+      final taskIds = tasks.map(_taskId).toSet();
+      completedIds.removeWhere((id) => !taskIds.contains(id));
+      for (final task in tasks) {
+        if (task['is_completed'] == true) {
+          completedIds.add(_taskId(task));
+        }
+      }
+
+      await completionStore.saveToday(completedIds);
+      _completionStore = completionStore;
+      setState(() {
+        _tasks = tasks;
+        _completedTaskIds
+          ..clear()
+          ..addAll(completedIds);
+        _isLoading = false;
+        _loadFailed = false;
+      });
+    } catch (error, stackTrace) {
       if (!mounted) return;
-      setState(() => _isLoading = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('فشل في جلب المهام')),
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: 'task loading',
+        ),
       );
+      setState(() {
+        _isLoading = false;
+        _loadFailed = true;
+      });
     }
   }
 
@@ -522,47 +536,75 @@ class _TasksScreenState extends State<TasksScreen>
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-              children: [
-                _buildDailySummary(),
-                const SizedBox(height: 14),
-                if (_tasks.isEmpty)
-                  SystemPanel(
-                    dashed: true,
+          : _loadFailed
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          '[SYSTEM ALERT]',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1.2,
-                          ),
+                        const Icon(
+                          Icons.cloud_off,
+                          color: AppColors.primary,
+                          size: 44,
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
                         const Text(
-                          'لا يوجد كويستات قائمة اليوم. '
-                          'أضف مهمة جديدة لبدء التمرين.',
+                          'تعذر تحميل المهام. تحقق من الاتصال بالخادم وحاول مجددًا.',
                           textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: TextStyle(color: AppColors.textSub),
                         ),
-                        const SizedBox(height: 14),
-                        SystemButton(
-                          label: 'إضافة مهمة',
-                          icon: Icons.add,
-                          onPressed: _showAddTaskDialog,
+                        const SizedBox(height: 16),
+                        FilledButton.icon(
+                          onPressed: _fetchTasks,
+                          icon: const Icon(Icons.refresh),
+                          label: const Text('إعادة المحاولة'),
                         ),
                       ],
                     ),
-                  )
-                else
-                  for (final task in _tasks) _buildTaskCard(task),
-              ],
-            ),
+                  ),
+                )
+              : ListView(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                  children: [
+                    _buildDailySummary(),
+                    const SizedBox(height: 14),
+                    if (_tasks.isEmpty)
+                      SystemPanel(
+                        dashed: true,
+                        child: Column(
+                          children: [
+                            const Text(
+                              '[SYSTEM ALERT]',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            const Text(
+                              'لا يوجد كويستات قائمة اليوم. '
+                              'أضف مهمة جديدة لبدء التمرين.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            SystemButton(
+                              label: 'إضافة مهمة',
+                              icon: Icons.add,
+                              onPressed: _showAddTaskDialog,
+                            ),
+                          ],
+                        ),
+                      )
+                    else
+                      for (final task in _tasks) _buildTaskCard(task),
+                  ],
+                ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 80),
