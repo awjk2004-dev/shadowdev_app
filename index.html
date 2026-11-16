@@ -12,16 +12,17 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             text-align: center;
+            padding: 20px 0;
         }
         .container {
             background-color: #1e293b;
             padding: 40px 30px;
             border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            max-width: 400px;
+            max-width: 500px;
             width: 90%;
         }
         h1 {
@@ -32,7 +33,7 @@
             color: #94a3b8;
             font-size: 16px;
             line-height: 1.6;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
         .btn {
             display: inline-block;
@@ -45,6 +46,7 @@
             border-radius: 8px;
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+            margin-bottom: 20px;
         }
         .btn:hover {
             background-color: #059669;
@@ -53,7 +55,29 @@
         .note {
             font-size: 12px;
             color: #f59e0b;
-            margin-top: 20px;
+            margin-top: 10px;
+            margin-bottom: 25px;
+        }
+
+        /* --- الفيديو --- */
+        video {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+        }
+
+        /* --- معرض الصور --- */
+        .screenshots {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .screenshots img {
+            width: 100%;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.1);
         }
     </style>
 </head>
@@ -62,7 +86,20 @@
     <div class="container">
         <h1>ShadowDev</h1>
         <p>نظام تطوير ذاتي بأسلوب RPG. قم بتحميل التطبيق الآن وابدأ رحلتك في تطوير مهاراتك!</p>
-        
+
+        <!-- الفيديو التعريفي -->
+        <video controls poster="screenshots/thumbnail.jpg">
+            <source src="2026-11-08-100439876.mp4" type="video/mp4">
+            متصفحك لا يدعم تشغيل الفيديو.
+        </video>
+
+        <!-- معرض سكرين شوتس -->
+        <div class="screenshots">
+            <img src="screenshots/1.jpg" alt="واجهة الرئيسية">
+            <img src="screenshots/2.jpg" alt="نظام الـ XP">
+            <img src="screenshots/3.jpg" alt="الرانكات">
+        </div>
+
         <!-- رابط التحميل المباشر من جوجل درايف -->
         <a href="https://drive.google.com/uc?export=download&id=1MsZDiXiV9v5VAIIoFq_wtKYSylrV5go9" class="btn" target="_blank">تحميل التطبيق (APK)</a>
         
