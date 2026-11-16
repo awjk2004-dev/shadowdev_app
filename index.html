@@ -5,48 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ShadowDev - طور مهاراتك</title>
     <style>
+        * {
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: #0f172a;
             color: #ffffff;
             display: flex;
             justify-content: center;
-            align-items: center;
+            align-items: flex-start;
             min-height: 100vh;
             margin: 0;
             text-align: center;
-            padding: 20px 0;
+            padding: 30px 15px;
         }
         .container {
             background-color: #1e293b;
-            padding: 40px 30px;
+            padding: 30px 20px;
             border-radius: 15px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-            max-width: 500px;
-            width: 90%;
+            max-width: 420px;
+            width: 100%;
         }
         h1 {
             color: #38bdf8;
             margin-bottom: 10px;
+            font-size: 1.8rem;
         }
         p {
             color: #94a3b8;
-            font-size: 16px;
+            font-size: 15px;
             line-height: 1.6;
             margin-bottom: 20px;
         }
         .btn {
-            display: inline-block;
+            display: block;
             background-color: #10b981;
             color: white;
             text-decoration: none;
-            padding: 15px 30px;
-            font-size: 18px;
+            padding: 15px 20px;
+            font-size: 17px;
             font-weight: bold;
             border-radius: 8px;
             transition: background-color 0.3s ease, transform 0.2s ease;
             box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
         .btn:hover {
             background-color: #059669;
@@ -55,7 +59,7 @@
         .note {
             font-size: 12px;
             color: #f59e0b;
-            margin-top: 10px;
+            margin-top: 5px;
             margin-bottom: 25px;
         }
 
@@ -63,21 +67,43 @@
         video {
             width: 100%;
             border-radius: 10px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.4);
+            display: block;
         }
 
-        /* --- معرض الصور --- */
-        .screenshots {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-            gap: 10px;
+        /* --- معرض الصور: سكرول أفقي بدل Grid --- */
+        .screenshots-wrapper {
+            margin-bottom: 20px;
+        }
+        .screenshots-title {
+            font-size: 13px;
+            color: #64748b;
             margin-bottom: 10px;
+            text-align: right;
+        }
+        .screenshots {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding-bottom: 8px;
+            scroll-snap-type: x mandatory;
+            -webkit-overflow-scrolling: touch;
+        }
+        .screenshots::-webkit-scrollbar {
+            height: 4px;
+        }
+        .screenshots::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 10px;
         }
         .screenshots img {
-            width: 100%;
-            border-radius: 8px;
+            flex: 0 0 auto;
+            height: 220px;
+            width: auto;
+            border-radius: 10px;
             border: 1px solid rgba(255,255,255,0.1);
+            scroll-snap-align: start;
         }
     </style>
 </head>
@@ -88,16 +114,19 @@
         <p>نظام تطوير ذاتي بأسلوب RPG. قم بتحميل التطبيق الآن وابدأ رحلتك في تطوير مهاراتك!</p>
 
         <!-- الفيديو التعريفي -->
-        <video controls poster="screenshots/thumbnail.jpg">
-            <source src="2026-11-08-100439876.mp4" type="video/mp4">
+        <video controls playsinline>
+            <source src="screenshots/2026-11-08-100439876.mp4" type="video/mp4">
             متصفحك لا يدعم تشغيل الفيديو.
         </video>
 
-        <!-- معرض سكرين شوتس -->
-        <div class="screenshots">
-            <img src="screenshots/1.jpg" alt="واجهة الرئيسية">
-            <img src="screenshots/2.jpg" alt="نظام الـ XP">
-            <img src="screenshots/3.jpg" alt="الرانكات">
+        <!-- معرض سكرين شوتس: سكرول أفقي -->
+        <div class="screenshots-wrapper">
+            <div class="screenshots-title">لقطات من التطبيق →</div>
+            <div class="screenshots">
+                <img src="screenshots/1.jpg" alt="واجهة الرئيسية">
+                <img src="screenshots/2.jpg" alt="نظام الـ XP">
+                <img src="screenshots/3.jpg" alt="الرانكات">
+            </div>
         </div>
 
         <!-- رابط التحميل المباشر من جوجل درايف -->
